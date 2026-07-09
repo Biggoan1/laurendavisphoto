@@ -10,21 +10,21 @@
      the nav toggle can force light/dark via [data-theme] on <html>. */
   :root{
     color-scheme: light dark;
-    --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6560; --line:#e7e2db;
-    --card:#ffffff; --accent:#8a6d4b; --accent-fg:#fff; --shadow:0 6px 24px rgba(0,0,0,.08);
+    --bg:#F7F5F0; --fg:#2B2926; --muted:#7A8576; --line:#E3DFD6;
+    --card:#FFFFFF; --accent:#4A5D45; --accent-fg:#fff; --shadow:0 6px 24px rgba(74,93,69,.08);
     --serif: ui-serif, Georgia, "Times New Roman", serif;
     --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#141210; --fg:#f0ebe4; --muted:#a49c92; --line:#2c2824;
-           --card:#1d1a17; --accent:#c9a578; --accent-fg:#1a1512; --shadow:0 6px 24px rgba(0,0,0,.5); }
+    :root{ --bg:#181A17; --fg:#EAE6DF; --muted:#8A9586; --line:#2A2E27;
+           --card:#212420; --accent:#C9A66B; --accent-fg:#181A17; --shadow:0 6px 24px rgba(0,0,0,.4); }
   }
   :root[data-theme="light"]{ color-scheme: light;
-    --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6560; --line:#e7e2db;
-    --card:#ffffff; --accent:#8a6d4b; --accent-fg:#fff; --shadow:0 6px 24px rgba(0,0,0,.08); }
+    --bg:#F7F5F0; --fg:#2B2926; --muted:#7A8576; --line:#E3DFD6;
+    --card:#FFFFFF; --accent:#4A5D45; --accent-fg:#fff; --shadow:0 6px 24px rgba(74,93,69,.08); }
   :root[data-theme="dark"]{ color-scheme: dark;
-    --bg:#141210; --fg:#f0ebe4; --muted:#a49c92; --line:#2c2824;
-    --card:#1d1a17; --accent:#c9a578; --accent-fg:#1a1512; --shadow:0 6px 24px rgba(0,0,0,.5); }
+    --bg:#181A17; --fg:#EAE6DF; --muted:#8A9586; --line:#2A2E27;
+    --card:#212420; --accent:#C9A66B; --accent-fg:#181A17; --shadow:0 6px 24px rgba(0,0,0,.4); }
 
   *{ box-sizing:border-box; }
   html,body{ margin:0; }
@@ -109,11 +109,10 @@
           cursor:pointer; background:none; border:none; }
 
   /* construction banner */
-  .construction-banner{ background:#8FBC8F; color:#FFFFF0; padding:28px 24px;
+  .construction-banner{ background:var(--accent); color:var(--accent-fg); padding:28px 24px;
                         text-align:center; border-radius:14px; margin:24px auto;
                         max-width:720px; box-shadow:var(--shadow);
                         font-size:1.05rem; line-height:1.65; }
-  @media (prefers-color-scheme: dark){ .construction-banner{ background:#6B8E6B; } }
 </style>
 </head>
 <body>
