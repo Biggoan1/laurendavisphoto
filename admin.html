@@ -136,11 +136,15 @@
   <section class="panel" id="tab-photos">
     <div class="card">
       <div class="row" style="justify-content:space-between; margin-bottom:10px">
-        <div><strong>Photos</strong><div class="small muted">Upload, caption, reorder, or remove. Sections: <em>hero</em> (top banner), <em>gallery</em> (portfolio grid), <em>about</em> (your portrait).</div></div>
+        <div><strong>Photos</strong><div class="small muted">Upload, caption, reorder, or remove. Sections: <em>hero</em> (top banner), <em>weddings</em>, <em>fine-art</em>, <em>sport</em>, <em>portraits</em> (portfolio filters), <em>about</em> (your portrait).</div></div>
         <div class="row">
           <label style="margin:0">Upload to</label>
           <select id="uploadSection" style="width:auto">
             <option value="gallery">Gallery</option>
+            <option value="weddings">Weddings</option>
+            <option value="fine-art">Fine Art</option>
+            <option value="sport">Sport</option>
+            <option value="portraits">Portraits</option>
             <option value="hero">Hero banner</option>
             <option value="about">About portrait</option>
           </select>
@@ -267,6 +271,10 @@ async function loadPhotos(){
       <div class="row">
         <select data-sec="${p.id}">
           <option value="gallery"${p.section==="gallery"?" selected":""}>Gallery</option>
+          <option value="weddings"${p.section==="weddings"?" selected":""}>Weddings</option>
+          <option value="fine-art"${p.section==="fine-art"?" selected":""}>Fine Art</option>
+          <option value="sport"${p.section==="sport"?" selected":""}>Sport</option>
+          <option value="portraits"${p.section==="portraits"?" selected":""}>Portraits</option>
           <option value="hero"${p.section==="hero"?" selected":""}>Hero</option>
           <option value="about"${p.section==="about"?" selected":""}>About</option>
         </select>
