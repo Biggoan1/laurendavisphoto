@@ -1,0 +1,7 @@
+.git
+data
+feature_work
+__pycache__
+*.pyc
+.env
+.smoke_data

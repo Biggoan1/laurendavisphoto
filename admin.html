@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Lauren Davis Photography</title>
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#f6f4f1; --fg:#1c1a17; --muted:#6b6560; --line:#e2ddd6; --card:#fff;
+    --accent:#8a6d4b; --accent-fg:#fff; --ok:#2e7d5b; --warn:#b5761f; --bad:#b3453b;
+    --chip:#efe9e1; --shadow:0 4px 18px rgba(0,0,0,.07);
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#141210; --fg:#f0ebe4; --muted:#a49c92; --line:#2c2824; --card:#1d1a17;
+    --accent:#c9a578; --accent-fg:#1a1512; --ok:#5cc99a; --warn:#e0a54e; --bad:#e5766b;
+    --chip:#2a2622; --shadow:0 4px 18px rgba(0,0,0,.5); } }
+  :root[data-theme="light"]{ color-scheme:light; --bg:#f6f4f1; --fg:#1c1a17; --muted:#6b6560;
+    --line:#e2ddd6; --card:#fff; --accent:#8a6d4b; --accent-fg:#fff; --ok:#2e7d5b;
+    --warn:#b5761f; --bad:#b3453b; --chip:#efe9e1; --shadow:0 4px 18px rgba(0,0,0,.07); }
+  :root[data-theme="dark"]{ color-scheme:dark; --bg:#141210; --fg:#f0ebe4; --muted:#a49c92;
+    --line:#2c2824; --card:#1d1a17; --accent:#c9a578; --accent-fg:#1a1512; --ok:#5cc99a;
+    --warn:#e0a54e; --bad:#e5766b; --chip:#2a2622; --shadow:0 4px 18px rgba(0,0,0,.5); }
+
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); font-family:var(--sans); line-height:1.5; }
+  a{ color:var(--accent); }
+  header{ display:flex; align-items:center; gap:14px; padding:14px 22px; border-bottom:1px solid var(--line);
+          background:var(--card); position:sticky; top:0; z-index:10; }
+  header h1{ font-size:1.05rem; margin:0; margin-right:auto; font-weight:700; }
+  header .who{ color:var(--muted); font-size:.85rem; }
+  .tabs{ display:flex; gap:6px; padding:14px 22px 0; flex-wrap:wrap; }
+  .tab{ border:1px solid var(--line); border-bottom:none; background:transparent; color:var(--muted);
+        padding:.55rem 1.1rem; border-radius:10px 10px 0 0; cursor:pointer; font-weight:600; font-size:.92rem; }
+  .tab.active{ background:var(--card); color:var(--fg); box-shadow:var(--shadow); }
+  main{ padding:22px; max-width:1200px; margin:0 auto; }
+  .panel{ display:none; } .panel.active{ display:block; }
+
+  button, .btn{ font-family:inherit; font-size:.9rem; border-radius:9px; border:1px solid var(--line);
+        background:var(--card); color:var(--fg); padding:.5rem .9rem; cursor:pointer; }
+  button:hover{ border-color:var(--muted); }
+  .primary{ background:var(--accent); color:var(--accent-fg); border-color:var(--accent); font-weight:600; }
+  .danger{ color:var(--bad); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  input, textarea, select{ font-family:inherit; font-size:.92rem; width:100%; padding:.55rem .7rem;
+        border:1px solid var(--line); border-radius:9px; background:var(--bg); color:var(--fg); }
+  textarea{ resize:vertical; min-height:80px; }
+  label{ display:block; font-size:.8rem; color:var(--muted); font-weight:600; margin:.9rem 0 .3rem;
+          text-transform:uppercase; letter-spacing:.04em; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px;
+         box-shadow:var(--shadow); }
+  .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--fg);
+          color:var(--bg); padding:.7rem 1.2rem; border-radius:10px; opacity:0; transition:opacity .2s;
+          pointer-events:none; z-index:60; font-size:.9rem; }
+  .toast.show{ opacity:1; }
+  .muted{ color:var(--muted); } .small{ font-size:.82rem; }
+
+  /* content grid */
+  .cgrid{ display:grid; grid-template-columns:1fr 1fr; gap:0 26px; }
+  @media (max-width:720px){ .cgrid{ grid-template-columns:1fr; } }
+  .full{ grid-column:1/-1; }
+
+  /* photos */
+  .drop{ border:2px dashed var(--line); border-radius:12px; padding:26px; text-align:center;
+         color:var(--muted); cursor:pointer; }
+  .drop.hover{ border-color:var(--accent); color:var(--fg); }
+  .pgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; margin-top:18px; }
+  .pcard img{ width:100%; height:150px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+  .pcard .row{ margin-top:6px; gap:6px; }
+  .pcard input, .pcard select{ font-size:.8rem; padding:.35rem .5rem; }
+
+  /* kanban */
+  .board{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; align-items:start; }
+  @media (max-width:900px){ .board{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:560px){ .board{ grid-template-columns:1fr; } }
+  .col h3{ font-size:.82rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+           margin:0 0 10px; display:flex; justify-content:space-between; }
+  .col{ background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:12px; min-height:80px; }
+  .fcard{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:11px 12px;
+          margin-bottom:10px; box-shadow:var(--shadow); }
+  .fcard h4{ margin:0 0 4px; font-size:.95rem; }
+  .fcard .re{ font-size:.82rem; color:var(--muted); margin:.3rem 0; }
+  .fcard .acts{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .fcard .acts button{ padding:.35rem .6rem; font-size:.8rem; }
+  .badge{ font-size:.68rem; padding:.15rem .5rem; border-radius:999px; background:var(--chip); color:var(--muted); }
+  .badge.build{ background:color-mix(in srgb,var(--warn) 25%,transparent); color:var(--warn); }
+  .badge.review{ background:color-mix(in srgb,var(--accent) 25%,transparent); color:var(--accent); }
+  .badge.fail{ background:color-mix(in srgb,var(--bad) 22%,transparent); color:var(--bad); }
+  .spin{ display:inline-block; width:12px; height:12px; border:2px solid var(--line);
+         border-top-color:var(--accent); border-radius:50%; animation:sp .8s linear infinite; }
+  @keyframes sp{ to{ transform:rotate(360deg); } }
+
+  /* modal */
+  .modal{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; z-index:70;
+          align-items:center; justify-content:center; padding:20px; }
+  .modal.open{ display:flex; }
+  .modal .box{ background:var(--card); border:1px solid var(--line); border-radius:14px;
+        max-width:900px; width:100%; max-height:88vh; overflow:auto; padding:20px; box-shadow:var(--shadow); }
+  pre.diff{ font-family:var(--mono); font-size:.8rem; background:var(--bg); border:1px solid var(--line);
+        border-radius:8px; padding:12px; overflow:auto; white-space:pre; }
+  pre.diff .add{ color:var(--ok); } pre.diff .del{ color:var(--bad); }
+  .themebtn{ width:36px; height:36px; border-radius:999px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lauren Davis Photography · Admin</h1>
+  <span class="who" id="who"></span>
+  <a href="/" target="_blank" class="btn">View site ↗</a>
+  <button class="themebtn" id="themebtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="content">Text &amp; content</button>
+  <button class="tab" data-tab="photos">Photos</button>
+  <button class="tab" data-tab="requests">Feature requests</button>
+</div>
+
+<main>
+  <!-- CONTENT -->
+  <section class="panel active" id="tab-content">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div><strong>Edit the words on your site</strong><div class="small muted">Changes go live as soon as you save.</div></div>
+        <button class="primary" id="saveContent">Save changes</button>
+      </div>
+      <div class="cgrid" id="contentForm" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- PHOTOS -->
+  <section class="panel" id="tab-photos">
+    <div class="card">
+      <div class="row" style="justify-content:space-between; margin-bottom:10px">
+        <div><strong>Photos</strong><div class="small muted">Upload, caption, reorder, or remove. Sections: <em>hero</em> (top banner), <em>gallery</em> (portfolio grid), <em>about</em> (your portrait).</div></div>
+        <div class="row">
+          <label style="margin:0">Upload to</label>
+          <select id="uploadSection" style="width:auto">
+            <option value="gallery">Gallery</option>
+            <option value="hero">Hero banner</option>
+            <option value="about">About portrait</option>
+          </select>
+        </div>
+      </div>
+      <div class="drop" id="drop">Drag photos here, or click to choose. (JPG, PNG, WEBP · up to 25 MB each)
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      </div>
+      <div id="uploadStatus" class="small muted" style="margin-top:8px"></div>
+      <div class="pgrid" id="photoGrid"></div>
+    </div>
+  </section>
+
+  <!-- REQUESTS -->
+  <section class="panel" id="tab-requests">
+    <div class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between">
+        <div><strong>Ask the AI to build something</strong>
+          <div class="small muted" id="coderStatus">Checking the builder…</div></div>
+      </div>
+      <label>What would you like changed or added?</label>
+      <input id="reqTitle" placeholder="e.g. Add a page for wedding packages">
+      <label>Any details (optional)</label>
+      <textarea id="reqDesc" placeholder="Describe it the way you'd explain it to a friend. Colors, wording, where it should go…"></textarea>
+      <div class="row" style="margin-top:10px; justify-content:flex-end">
+        <button class="primary" id="addReq">Add request</button>
+      </div>
+      <div class="small muted" style="margin-top:6px">The AI builds one request at a time so it never gets overloaded. You'll review every change before it goes live.</div>
+    </div>
+
+    <div class="board">
+      <div class="col"><h3>Ideas <span id="c-new" class="badge">0</span></h3><div id="col-new"></div></div>
+      <div class="col"><h3>Queued <span id="c-queued" class="badge">0</span></h3><div id="col-queued"></div></div>
+      <div class="col"><h3>Building <span id="c-building" class="badge">0</span></h3><div id="col-building"></div></div>
+      <div class="col"><h3>Review &amp; done <span id="c-review" class="badge">0</span></h3><div id="col-review"></div></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const root = document.documentElement;
+const savedTheme = localStorage.getItem("ldp-theme");
+if (savedTheme) root.setAttribute("data-theme", savedTheme);
+$("#themebtn").onclick = () => {
+  const cur = root.getAttribute("data-theme");
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  let next = (cur==="auto"||!cur) ? (dark?"light":"dark") : (cur==="light"?"dark":"light");
+  root.setAttribute("data-theme", next); localStorage.setItem("ldp-theme", next);
+};
+
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2600); }
+async function api(u, opt){ const r = await fetch(u, opt); if(!r.ok){ let d=""; try{d=(await r.json()).detail||""}catch(e){} throw new Error(d||(r.status+" "+r.statusText)); } const ct=r.headers.get("content-type")||""; return ct.includes("json")?r.json():r.text(); }
+
+// tabs
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active"); $("#tab-"+t.dataset.tab).classList.add("active");
+  if (t.dataset.tab==="photos") loadPhotos();
+  if (t.dataset.tab==="requests") loadFeatures();
+});
+
+// who am I
+api("/admin/api/me").then(m=>{ $("#who").textContent = m.email && m.email!=="local" ? ("Signed in as "+m.email) : ""; }).catch(()=>{});
+
+// ---------------- CONTENT ----------------
+const LABELS = {
+  site_title:"Browser tab title", nav_brand:"Header name", hero_heading:"Hero heading",
+  hero_sub:"Hero subtitle", hero_cta:"Hero button text", about_heading:"About heading",
+  about_body:"About text", gallery_heading:"Portfolio heading", gallery_sub:"Portfolio subtitle",
+  contact_heading:"Contact heading", contact_body:"Contact text", contact_email:"Contact email",
+  contact_phone:"Contact phone", instagram:"Instagram handle", footer:"Footer text"
+};
+const LONG = new Set(["about_body","contact_body","hero_sub"]);
+async function loadContent(){
+  const c = await api("/admin/api/content");
+  const f = $("#contentForm"); f.innerHTML="";
+  const keys = Object.keys(LABELS).filter(k=>k in c).concat(Object.keys(c).filter(k=>!(k in LABELS)));
+  keys.forEach(k=>{
+    const wrap = document.createElement("div");
+    if (LONG.has(k)) wrap.className="full";
+    const lab = document.createElement("label"); lab.textContent = LABELS[k]||k; lab.htmlFor="c_"+k;
+    const el = LONG.has(k) ? document.createElement("textarea") : document.createElement("input");
+    el.id="c_"+k; el.value = c[k]||""; el.dataset.key=k;
+    wrap.appendChild(lab); wrap.appendChild(el); f.appendChild(wrap);
+  });
+}
+$("#saveContent").onclick = async ()=>{
+  const body={}; document.querySelectorAll("#contentForm [data-key]").forEach(el=>body[el.dataset.key]=el.value);
+  try{ await api("/admin/api/content",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)}); toast("Saved ✓"); }
+  catch(e){ toast("Save failed: "+e.message); }
+};
+
+// ---------------- PHOTOS ----------------
+const drop=$("#drop"), fileInput=$("#fileInput");
+drop.onclick=()=>fileInput.click();
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hover");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hover");}));
+drop.addEventListener("drop",e=>upload(e.dataTransfer.files));
+fileInput.onchange=()=>upload(fileInput.files);
+
+async function upload(files){
+  if(!files||!files.length) return;
+  const fd=new FormData(); fd.append("section", $("#uploadSection").value);
+  [...files].forEach(f=>fd.append("files", f));
+  $("#uploadStatus").textContent = "Uploading "+files.length+" photo(s)…";
+  try{ const r=await api("/admin/api/photos",{method:"POST",body:fd}); $("#uploadStatus").textContent="Uploaded "+r.uploaded.length+" ✓"; loadPhotos(); }
+  catch(e){ $("#uploadStatus").textContent="Upload failed: "+e.message; }
+  fileInput.value="";
+}
+
+async function loadPhotos(){
+  const photos = await api("/api/photos");
+  const g=$("#photoGrid"); g.innerHTML="";
+  if(!photos.length){ g.innerHTML='<div class="muted small">No photos yet.</div>'; return; }
+  photos.forEach((p,idx)=>{
+    const d=document.createElement("div"); d.className="pcard";
+    d.innerHTML = `<img src="${p.url}" alt="">
+      <input value="${(p.caption||"").replace(/"/g,'&quot;')}" placeholder="Caption" data-cap="${p.id}">
+      <div class="row">
+        <select data-sec="${p.id}">
+          <option value="gallery"${p.section==="gallery"?" selected":""}>Gallery</option>
+          <option value="hero"${p.section==="hero"?" selected":""}>Hero</option>
+          <option value="about"${p.section==="about"?" selected":""}>About</option>
+        </select>
+      </div>
+      <div class="row">
+        <button data-up="${p.id}" title="Move up">↑</button>
+        <button data-down="${p.id}" title="Move down">↓</button>
+        <button class="danger" data-del="${p.id}" title="Delete">✕</button>
+      </div>`;
+    g.appendChild(d);
+  });
+  // wire events
+  g.querySelectorAll("[data-cap]").forEach(el=>el.onchange=()=>savePhoto(el.dataset.cap,{caption:el.value}));
+  g.querySelectorAll("[data-sec]").forEach(el=>el.onchange=()=>{savePhoto(el.dataset.sec,{section:el.value});});
+  g.querySelectorAll("[data-del]").forEach(el=>el.onclick=async()=>{ if(!confirm("Delete this photo?"))return; await api("/admin/api/photos/"+el.dataset.del,{method:"DELETE"}); loadPhotos(); });
+  const ids = photos.map(p=>p.id);
+  g.querySelectorAll("[data-up]").forEach(el=>el.onclick=()=>reorder(ids, +el.dataset.up, -1));
+  g.querySelectorAll("[data-down]").forEach(el=>el.onclick=()=>reorder(ids, +el.dataset.down, +1));
+}
+async function savePhoto(id, patch){ try{ await api("/admin/api/photos/"+id,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(patch)}); toast("Saved ✓"); if(patch.section) loadPhotos(); }catch(e){ toast(e.message); } }
+async function reorder(ids, id, dir){
+  const i=ids.indexOf(id), j=i+dir; if(j<0||j>=ids.length) return;
+  ids.splice(j,0,ids.splice(i,1)[0]);
+  await api("/admin/api/photos/reorder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({order:ids})});
+  loadPhotos();
+}
+
+// ---------------- REQUESTS (kanban) ----------------
+let featTimer=null, coderReady=false;
+async function loadMeta(){
+  try{
+    const m = await api("/admin/api/features/meta");
+    const b = (m.coder.backends||[]).find(x=>x.id===m.coder.default) || (m.coder.backends||[])[0];
+    if(b && b.ready){ coderReady=true; $("#coderStatus").innerHTML='Builder ready: <strong>'+b.label+'</strong>'; }
+    else { coderReady=false; $("#coderStatus").innerHTML='⚠ Builder offline'+(b&&b.detail?' — '+b.detail:'')+'. You can still add requests; queue them when it\'s back.'; }
+  }catch(e){ $("#coderStatus").textContent="Couldn't check the builder."; }
+}
+$("#addReq").onclick = async ()=>{
+  const title=$("#reqTitle").value.trim(); if(!title){ toast("Give it a short title"); return; }
+  try{
+    await api("/admin/api/features",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({title, description:$("#reqDesc").value.trim()})});
+    $("#reqTitle").value=""; $("#reqDesc").value=""; toast("Added — the AI is reading it…"); loadFeatures();
+  }catch(e){ toast("Failed: "+e.message); }
+};
+
+function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function card(f){
+  const st=f.status;
+  let badge="", acts="";
+  if(st==="building"||f.attempt_status==="running"){ badge='<span class="badge build"><span class="spin"></span> building</span>'; }
+  else if(st==="needs_review"){ badge='<span class="badge review">ready to review</span>'; }
+  else if(st==="failed"){ badge='<span class="badge fail">failed</span>'; }
+  else if(st==="approved"){ badge='<span class="badge" style="color:var(--ok)">live ✓</span>'; }
+  else if(st==="rejected"){ badge='<span class="badge">discarded</span>'; }
+  else if(st==="queued"){ badge='<span class="badge">waiting</span>'; }
+  else { badge='<span class="badge">idea</span>'; }
+
+  const re = f.restatement ? `<div class="re">“${esc(f.restatement)}”</div>` : '<div class="re muted">reading your request…</div>';
+  if(st==="new"){ acts=`<button class="primary" data-build="${f.id}"${coderReady?"":" disabled"}>Build it</button>
+                        <button data-edit="${f.id}">Edit</button><button class="danger" data-del="${f.id}">Delete</button>`; }
+  else if(st==="queued"){ acts=`<button data-unqueue="${f.id}">Pull back</button>`; }
+  else if(st==="building"){ acts=`<button data-log="${f.id}">View progress</button>`; }
+  else if(st==="needs_review"){ acts=`<button class="primary" data-diff="${f.id}">Review change</button>`; }
+  else if(st==="failed"){ acts=`<button data-log="${f.id}">Why?</button><button data-build="${f.id}"${coderReady?"":" disabled"}>Try again</button><button class="danger" data-del="${f.id}">Delete</button>`; }
+  else { acts=`<button class="danger" data-del="${f.id}">Remove</button>`; }
+
+  return `<div class="fcard"><div class="row" style="justify-content:space-between"><h4>${esc(f.title)}</h4>${badge}</div>
+    ${re}${f.description?`<div class="small muted">${esc(f.description)}</div>`:""}
+    <div class="acts">${acts}</div></div>`;
+}
+
+async function loadFeatures(){
+  await loadMeta();
+  let data; try{ data = await api("/admin/api/features"); }catch(e){ return; }
+  const cols={new:[],queued:[],building:[],review:[]};
+  data.features.forEach(f=>{
+    if(f.status==="new") cols.new.push(f);
+    else if(f.status==="queued") cols.queued.push(f);
+    else if(f.status==="building") cols.building.push(f);
+    else cols.review.push(f); // needs_review, approved, rejected, failed
+  });
+  $("#col-new").innerHTML = cols.new.map(card).join("")||'<div class="muted small">No ideas yet.</div>';
+  $("#col-queued").innerHTML = cols.queued.map(card).join("")||'<div class="muted small">—</div>';
+  $("#col-building").innerHTML = cols.building.map(card).join("")||'<div class="muted small">Idle.</div>';
+  $("#col-review").innerHTML = cols.review.map(card).join("")||'<div class="muted small">—</div>';
+  ["new","queued","building","review"].forEach(k=>$("#c-"+k).textContent=cols[k].length);
+  wireCards();
+
+  // auto-refresh while anything is active
+  const active = data.features.some(f=>["queued","building"].includes(f.status)) || data.building;
+  clearTimeout(featTimer);
+  if($("#tab-requests").classList.contains("active")) featTimer=setTimeout(loadFeatures, active?3000:9000);
+}
+
+function wireCards(){
+  const root=$("#tab-requests");
+  root.querySelectorAll("[data-build]").forEach(b=>b.onclick=async()=>{ try{ await api("/admin/api/features/"+b.dataset.build+"/build",{method:"POST",headers:{"content-type":"application/json"},body:"{}"}); toast("Queued for the AI"); loadFeatures(); }catch(e){ toast(e.message); } });
+  root.querySelectorAll("[data-unqueue]").forEach(b=>b.onclick=async()=>{ await api("/admin/api/features/"+b.dataset.unqueue+"/unqueue",{method:"POST"}); loadFeatures(); });
+  root.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ if(!confirm("Delete this request?"))return; await api("/admin/api/features/"+b.dataset.del,{method:"DELETE"}); loadFeatures(); });
+  root.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editFeature(b.dataset.edit));
+  root.querySelectorAll("[data-log]").forEach(b=>b.onclick=()=>showLog(b.dataset.log));
+  root.querySelectorAll("[data-diff]").forEach(b=>b.onclick=()=>showDiff(b.dataset.diff));
+}
+
+function openModal(html){ $("#modalBox").innerHTML=html; $("#modal").classList.add("open"); }
+$("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
+function closeModal(){ $("#modal").classList.remove("open"); }
+
+async function editFeature(id){
+  const f = await api("/admin/api/features/"+id);
+  openModal(`<h3>Edit request</h3>
+    <label>Title</label><input id="e_title" value="${esc(f.title)}">
+    <label>Details</label><textarea id="e_desc">${esc(f.description)}</textarea>
+    <div class="row" style="justify-content:flex-end; margin-top:12px">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="primary" id="e_save">Save</button></div>`);
+  $("#e_save").onclick=async()=>{ await api("/admin/api/features/"+id,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({title:$("#e_title").value,description:$("#e_desc").value})}); closeModal(); toast("Updated"); loadFeatures(); };
+}
+async function showLog(id){
+  const f = await api("/admin/api/features/"+id);
+  const a=f.attempt||{};
+  openModal(`<h3>${esc(f.title)}</h3><div class="small muted">Status: ${f.status}</div>
+    ${a.error?`<p style="color:var(--bad)">${esc(a.error)}</p>`:""}
+    <pre class="diff">${esc(a.log||"(no log yet)")}</pre>
+    <div class="row" style="justify-content:flex-end"><button onclick="closeModal()">Close</button></div>`);
+}
+function colorDiff(d){
+  return esc(d).split("\n").map(l=>{
+    if(l.startsWith("+")&&!l.startsWith("+++")) return '<span class="add">'+l+'</span>';
+    if(l.startsWith("-")&&!l.startsWith("---")) return '<span class="del">'+l+'</span>';
+    return l;
+  }).join("\n");
+}
+async function showDiff(id){
+  const f = await api("/admin/api/features/"+id);
+  const a=f.attempt||{};
+  openModal(`<div class="row" style="justify-content:space-between"><h3>${esc(f.title)}</h3></div>
+    ${f.restatement?`<div class="re">“${esc(f.restatement)}”</div>`:""}
+    <div class="small muted">The AI made this change on a copy and boot-tested it. Approve to make it live (the site restarts for a few seconds), or discard it.</div>
+    <pre class="diff">${colorDiff(a.diff||"(no diff)")}</pre>
+    <div class="row" style="justify-content:flex-end; margin-top:12px">
+      <button class="danger" id="d_reject">Discard</button>
+      <button class="primary" id="d_approve">Approve &amp; publish</button></div>`);
+  $("#d_reject").onclick=async()=>{ await api("/admin/api/features/"+id+"/reject",{method:"POST"}); closeModal(); toast("Discarded"); loadFeatures(); };
+  $("#d_approve").onclick=async()=>{ try{ const r=await api("/admin/api/features/"+id+"/approve",{method:"POST"}); closeModal(); toast(r.note||"Approved — publishing…"); loadFeatures(); }catch(e){ toast(e.message); } };
+}
+
+// initial
+loadContent();
+</script>
+</body>
+</html>

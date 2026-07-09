@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lauren Davis Photography</title>
+<meta name="description" content="Lauren Davis Photography — portraits, weddings and everyday moments.">
+<style>
+  /* Theme follows the browser by default (color-scheme + prefers-color-scheme);
+     the nav toggle can force light/dark via [data-theme] on <html>. */
+  :root{
+    color-scheme: light dark;
+    --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6560; --line:#e7e2db;
+    --card:#ffffff; --accent:#8a6d4b; --accent-fg:#fff; --shadow:0 6px 24px rgba(0,0,0,.08);
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141210; --fg:#f0ebe4; --muted:#a49c92; --line:#2c2824;
+           --card:#1d1a17; --accent:#c9a578; --accent-fg:#1a1512; --shadow:0 6px 24px rgba(0,0,0,.5); }
+  }
+  :root[data-theme="light"]{ color-scheme: light;
+    --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6560; --line:#e7e2db;
+    --card:#ffffff; --accent:#8a6d4b; --accent-fg:#fff; --shadow:0 6px 24px rgba(0,0,0,.08); }
+  :root[data-theme="dark"]{ color-scheme: dark;
+    --bg:#141210; --fg:#f0ebe4; --muted:#a49c92; --line:#2c2824;
+    --card:#1d1a17; --accent:#c9a578; --accent-fg:#1a1512; --shadow:0 6px 24px rgba(0,0,0,.5); }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ background:var(--bg); color:var(--fg); font-family:var(--sans);
+        line-height:1.6; -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; }
+  img{ max-width:100%; display:block; }
+  h1,h2,h3{ font-family:var(--serif); font-weight:600; line-height:1.15; margin:0; }
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 24px; }
+  .btn{ display:inline-block; background:var(--accent); color:var(--accent-fg);
+        padding:.7rem 1.4rem; border-radius:999px; text-decoration:none;
+        font-weight:600; letter-spacing:.01em; transition:transform .15s ease, opacity .15s; }
+  .btn:hover{ transform:translateY(-1px); opacity:.94; }
+
+  /* nav */
+  nav{ position:sticky; top:0; z-index:20; backdrop-filter:saturate(1.2) blur(10px);
+       background:color-mix(in srgb, var(--bg) 82%, transparent); border-bottom:1px solid var(--line); }
+  nav .wrap{ display:flex; align-items:center; gap:20px; height:64px; }
+  .brand{ font-family:var(--serif); font-size:1.25rem; font-weight:600; text-decoration:none;
+          letter-spacing:.02em; margin-right:auto; }
+  .navlinks{ display:flex; gap:22px; align-items:center; }
+  .navlinks a{ text-decoration:none; color:var(--muted); font-size:.95rem; }
+  .navlinks a:hover{ color:var(--fg); }
+  .themebtn{ background:none; border:1px solid var(--line); color:var(--muted);
+             width:38px; height:38px; border-radius:999px; cursor:pointer; font-size:1rem; }
+  .themebtn:hover{ color:var(--fg); border-color:var(--muted); }
+  @media (max-width:640px){ .navlinks a:not(.themewrap){ display:none; } }
+
+  /* hero */
+  .hero{ position:relative; min-height:min(84vh,720px); display:flex; align-items:center;
+         overflow:hidden; border-bottom:1px solid var(--line); }
+  .hero-bg{ position:absolute; inset:0; background-size:cover; background-position:center;
+            background-color:var(--card); }
+  .hero-bg::after{ content:""; position:absolute; inset:0;
+            background:linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.55)); }
+  .hero.nobg .hero-bg::after{ background:linear-gradient(180deg,
+            color-mix(in srgb,var(--bg) 40%,transparent), var(--bg)); }
+  .hero-inner{ position:relative; z-index:2; color:#fff; padding:64px 0; }
+  .hero.nobg .hero-inner{ color:var(--fg); }
+  .hero h1{ font-size:clamp(2.4rem,6vw,4.2rem); text-shadow:0 2px 30px rgba(0,0,0,.35); }
+  .hero.nobg h1{ text-shadow:none; }
+  .hero p{ font-size:clamp(1.05rem,2.2vw,1.4rem); max-width:34ch; margin:.8rem 0 1.8rem;
+           opacity:.95; }
+
+  /* sections */
+  section{ padding:72px 0; }
+  .eyebrow{ text-transform:uppercase; letter-spacing:.22em; font-size:.75rem;
+            color:var(--accent); font-weight:700; margin-bottom:.5rem; }
+  .sec-head h2{ font-size:clamp(1.8rem,4vw,2.6rem); }
+  .sec-head p{ color:var(--muted); margin:.4rem 0 0; }
+
+  /* gallery */
+  .grid{ columns: 3 260px; column-gap:16px; margin-top:34px; }
+  .grid figure{ margin:0 0 16px; break-inside:avoid; border-radius:12px; overflow:hidden;
+                background:var(--card); box-shadow:var(--shadow); cursor:zoom-in;
+                border:1px solid var(--line); }
+  .grid img{ width:100%; transition:transform .4s ease; }
+  .grid figure:hover img{ transform:scale(1.04); }
+  .grid figcaption{ padding:.6rem .8rem; font-size:.85rem; color:var(--muted); }
+  .empty{ color:var(--muted); border:1px dashed var(--line); border-radius:12px;
+          padding:36px; text-align:center; margin-top:24px; }
+
+  /* about */
+  .about{ display:grid; grid-template-columns:1.2fr .8fr; gap:48px; align-items:center; }
+  .about img{ border-radius:14px; box-shadow:var(--shadow); }
+  @media (max-width:760px){ .about{ grid-template-columns:1fr; } }
+
+  /* contact */
+  .contact{ background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .contact .row{ display:flex; flex-wrap:wrap; gap:12px 28px; margin-top:20px; color:var(--muted); }
+  .contact .row a{ color:var(--fg); text-decoration:none; border-bottom:1px solid var(--accent); }
+
+  footer{ padding:36px 0; color:var(--muted); font-size:.9rem; text-align:center; }
+  footer a{ color:var(--muted); }
+
+  /* lightbox */
+  .lb{ position:fixed; inset:0; background:rgba(0,0,0,.92); display:none;
+       align-items:center; justify-content:center; z-index:50; padding:24px; }
+  .lb.open{ display:flex; }
+  .lb img{ max-width:94vw; max-height:90vh; border-radius:6px; }
+  .lb .x{ position:absolute; top:18px; right:24px; color:#fff; font-size:2rem;
+          cursor:pointer; background:none; border:none; }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="/" data-content="nav_brand">Lauren Davis</a>
+  <div class="navlinks">
+    <a href="#work">Work</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+    <span class="themewrap"><button class="themebtn" id="themebtn" title="Toggle light/dark" aria-label="Toggle theme">◐</button></span>
+  </div>
+</div></nav>
+
+<header class="hero" id="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="wrap hero-inner">
+    <h1 data-content="hero_heading">Lauren Davis Photography</h1>
+    <p data-content="hero_sub">Portraits, weddings &amp; everyday moments — made to last.</p>
+    <a class="btn" href="#contact" data-content="hero_cta">Get in touch</a>
+  </div>
+</header>
+
+<section id="work" class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">Portfolio</div>
+    <h2 data-content="gallery_heading">Work</h2>
+    <p data-content="gallery_sub">A few recent favorites.</p>
+  </div>
+  <div class="grid" id="gallery"></div>
+  <div class="empty" id="galleryEmpty" hidden>Photos are on the way — check back soon.</div>
+</section>
+
+<section id="about" class="contact">
+  <div class="wrap about">
+    <div>
+      <div class="eyebrow">Hello</div>
+      <h2 data-content="about_heading">About</h2>
+      <p data-content="about_body" style="color:var(--muted); margin-top:1rem;"></p>
+    </div>
+    <img id="aboutImg" alt="Lauren Davis" hidden>
+  </div>
+</section>
+
+<section id="contact" class="wrap">
+  <div class="sec-head">
+    <div class="eyebrow">Contact</div>
+    <h2 data-content="contact_heading">Let's work together</h2>
+    <p data-content="contact_body"></p>
+  </div>
+  <div class="row" id="contactRow"></div>
+</section>
+
+<footer><div class="wrap"><span data-content="footer">© Lauren Davis Photography</span></div></footer>
+
+<div class="lb" id="lb"><button class="x" id="lbx" aria-label="Close">×</button><img id="lbimg" alt=""></div>
+
+<script>
+// ---- theme toggle (default: follow browser) ----
+const root = document.documentElement;
+const saved = localStorage.getItem("ldp-theme");
+if (saved) root.setAttribute("data-theme", saved);
+document.getElementById("themebtn").onclick = () => {
+  const cur = root.getAttribute("data-theme");
+  const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  // cycle: auto -> opposite of system -> other -> auto
+  let next;
+  if (cur === "auto" || !cur) next = prefersDark ? "light" : "dark";
+  else if (cur === "light") next = "dark";
+  else next = "light";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("ldp-theme", next);
+};
+
+// ---- render content + photos ----
+async function j(u){ const r = await fetch(u); if(!r.ok) throw new Error(u); return r.json(); }
+
+function applyContent(c){
+  document.querySelectorAll("[data-content]").forEach(el=>{
+    const k = el.getAttribute("data-content");
+    if (c[k] != null && c[k] !== "") el.textContent = c[k];
+  });
+  if (c.site_title) document.title = c.site_title;
+  window.__content = c;
+}
+
+function renderContact(c){
+  const row = document.getElementById("contactRow"); row.innerHTML = "";
+  const add = (label, href) => {
+    if (!href) return;
+    const span = document.createElement("span");
+    span.innerHTML = label + ': <a href="'+href.h+'">'+href.t+'</a>';
+    row.appendChild(span);
+  };
+  if (c.contact_email) add("Email", {h:"mailto:"+c.contact_email, t:c.contact_email});
+  if (c.contact_phone) add("Phone", {h:"tel:"+c.contact_phone.replace(/[^+0-9]/g,""), t:c.contact_phone});
+  if (c.instagram){
+    const handle = c.instagram.replace(/^@/,"");
+    add("Instagram", {h:"https://instagram.com/"+handle, t:"@"+handle});
+  }
+}
+
+function lightbox(src){
+  const lb = document.getElementById("lb");
+  document.getElementById("lbimg").src = src;
+  lb.classList.add("open");
+}
+document.getElementById("lbx").onclick =
+document.getElementById("lb").onclick = e => {
+  if (e.target.id === "lbimg") return;
+  document.getElementById("lb").classList.remove("open");
+};
+
+function renderGallery(photos){
+  const g = document.getElementById("gallery");
+  const empty = document.getElementById("galleryEmpty");
+  g.innerHTML = "";
+  if (!photos.length){ empty.hidden = false; return; }
+  empty.hidden = true;
+  photos.forEach(p=>{
+    const fig = document.createElement("figure");
+    const img = document.createElement("img");
+    img.src = p.url; img.alt = p.caption || "Photograph by Lauren Davis";
+    img.loading = "lazy";
+    fig.appendChild(img);
+    if (p.caption){ const cap = document.createElement("figcaption"); cap.textContent = p.caption; fig.appendChild(cap); }
+    fig.onclick = ()=>lightbox(p.url);
+    g.appendChild(fig);
+  });
+}
+
+async function load(){
+  try{
+    const [content, photos] = await Promise.all([j("/api/content"), j("/api/photos")]);
+    applyContent(content);
+    renderContact(content);
+
+    const hero = photos.filter(p=>p.section==="hero");
+    const about = photos.filter(p=>p.section==="about");
+    const gallery = photos.filter(p=>p.section==="gallery" || !["hero","about"].includes(p.section));
+
+    const heroEl = document.getElementById("hero");
+    if (hero.length){ document.getElementById("heroBg").style.backgroundImage = `url("${hero[0].url}")`; }
+    else if (gallery.length){ document.getElementById("heroBg").style.backgroundImage = `url("${gallery[0].url}")`; }
+    else { heroEl.classList.add("nobg"); }
+
+    if (about.length){ const a=document.getElementById("aboutImg"); a.src=about[0].url; a.hidden=false; }
+
+    renderGallery(gallery);
+  }catch(e){ console.error("load failed", e); }
+}
+load();
+</script>
+</body>
+</html>

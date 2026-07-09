@@ -1,0 +1,8 @@
+.env
+data/
+feature_work/
+__pycache__/
+*.pyc
+.smoke_data/
+*.db
+*.db-journal

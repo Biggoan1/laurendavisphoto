@@ -1,0 +1,31 @@
+# Lauren Davis Photography — public site + admin + AI feature board.
+# Fronted by a Cloudflare tunnel (tunnel-only: no host ports published).
+#   1. cp .env.example .env  and fill CF_TUNNEL_TOKEN
+#   2. docker compose up -d --build
+# The tunnel's ingress (set in Cloudflare) points the public hostname at
+# http://app:8000. Cloudflare Access gates the /admin path.
+services:
+  app:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app                 # the repo (code) — the AI feature-coder edits + commits here
+      - ./data:/data            # db + uploaded photos (gitignored, persists)
+      - ~/.ssh:/root/.ssh:ro    # deploy key, so approved features push to GitHub
+    environment:
+      - SITE_DATA=/data
+      - SITE_REPO=/app
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - FEATURE_CODERS=${FEATURE_CODERS:-qwen}
+      - FEATURE_CODER_URL=${FEATURE_CODER_URL:-http://10.100.0.13:8080/v1/chat/completions}
+      - FEATURE_CODER_MODEL=${FEATURE_CODER_MODEL:-qwen3.6-35b}
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - app
