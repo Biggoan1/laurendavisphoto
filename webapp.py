@@ -56,6 +56,13 @@ DEFAULT_CONTENT = {
     "contact_phone": "",
     "instagram":     "",
     "footer":        "© Lauren Davis Photography",
+    "construction_msg": ("🚧 Website Under Construction! 🚧\n\n"
+                         "As my business grows, so must my professionalism! "
+                         "I'm working hard on bringing you the absolute best product and experience. "
+                         "Thank you SO much for your patience — I can't wait to show you what's coming! ✨\n\n"
+                         "In the meantime, feel free to reach out:\n"
+                         "📞 269-270-1433\n"
+                         "📧 lauren.davis@dw-r.com"),
 }
 
 # ---------------------------------------------------------------- db helpers
