@@ -107,6 +107,13 @@
   .lb img{ max-width:94vw; max-height:90vh; border-radius:6px; }
   .lb .x{ position:absolute; top:18px; right:24px; color:#fff; font-size:2rem;
           cursor:pointer; background:none; border:none; }
+
+  /* construction banner */
+  .construction-banner{ background:#8FBC8F; color:#FFFFF0; padding:28px 24px;
+                        text-align:center; border-radius:14px; margin:24px auto;
+                        max-width:720px; box-shadow:var(--shadow);
+                        font-size:1.05rem; line-height:1.65; }
+  @media (prefers-color-scheme: dark){ .construction-banner{ background:#6B8E6B; } }
 </style>
 </head>
 <body>
@@ -128,6 +135,8 @@
     <a class="btn" href="#contact" data-content="hero_cta">Get in touch</a>
   </div>
 </header>
+
+<div class="construction-banner" id="constructionBanner" hidden></div>
 
 <section id="work" class="wrap">
   <div class="sec-head">
@@ -188,6 +197,11 @@ function applyContent(c){
     const k = el.getAttribute("data-content");
     if (c[k] != null && c[k] !== "") el.textContent = c[k];
   });
+  if (c.construction_msg) {
+    const el = document.getElementById("constructionBanner");
+    el.innerHTML = c.construction_msg.replace(/\n/g, "<br>");
+    el.hidden = false;
+  }
   if (c.site_title) document.title = c.site_title;
   window.__content = c;
 }
