@@ -19,9 +19,14 @@ services:
       - FEATURE_CODERS=${FEATURE_CODERS:-qwen}
       - FEATURE_CODER_URL=${FEATURE_CODER_URL:-http://10.100.0.13:8080/v1/chat/completions}
       - FEATURE_CODER_MODEL=${FEATURE_CODER_MODEL:-qwen3.6-35b}
+      # Email (contact form). SMTP is preferred; Resend is a fallback.
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - MAIL_FROM=${MAIL_FROM:-Lauren Davis Photography <lauren.davis@dw-r.com>}
+      - MAIL_TO=${MAIL_TO:-lauren.davis@dw-r.com}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
-      - RESEND_FROM=${RESEND_FROM:-Lauren Davis Photography <lauren.davis@dw-r.com>}
-      - RESEND_TO=${RESEND_TO:-lauren.davis@dw-r.com}
     restart: unless-stopped
 
   cloudflared:

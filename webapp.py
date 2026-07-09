@@ -30,13 +30,34 @@ ADMIN_EMAILS = {e.strip().lower()
                 for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 RUN_QUEUE_WORKER = os.environ.get("SITE_QUEUE_WORKER", "1") != "0"
 
-# Contact-form email delivery (Resend HTTPS API — stdlib urllib, no extra dep).
-# If RESEND_API_KEY is unset the form still works: every enquiry is stored in the
-# DB and readable in /admin; email just stays deferred (emailed=0) until a key is set.
+# Contact-form email delivery. Two transports, both stdlib (no extra dep, no
+# image rebuild): SMTP (Gmail/iCloud/any — preferred when configured) and the
+# Resend HTTPS API (fallback). If neither is configured the form still works:
+# every enquiry is stored in the DB and readable in /admin; email just stays
+# deferred (emailed=0) until credentials are set.
+#
+# SMTP (e.g. Google Workspace): SMTP_HOST=smtp.gmail.com SMTP_PORT=587
+#   SMTP_USER=lauren.davis@dw-r.com SMTP_PASS=<16-char app password>
+# iCloud is the same with SMTP_HOST=smtp.mail.me.com.
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASS = os.environ.get("SMTP_PASS", "").strip()
+
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
-RESEND_FROM = os.environ.get(
-    "RESEND_FROM", "Lauren Davis Photography <lauren.davis@dw-r.com>")
-RESEND_TO = os.environ.get("RESEND_TO", "lauren.davis@dw-r.com")
+
+# From/To are shared across transports; the RESEND_* names are kept as fallbacks
+# so nothing breaks if only the old vars are set.
+MAIL_FROM = os.environ.get(
+    "MAIL_FROM",
+    os.environ.get("RESEND_FROM", "Lauren Davis Photography <lauren.davis@dw-r.com>"))
+MAIL_TO = os.environ.get(
+    "MAIL_TO", os.environ.get("RESEND_TO", "lauren.davis@dw-r.com"))
+
+
+def mail_configured() -> bool:
+    """True if any email transport is set up (SMTP creds or a Resend key)."""
+    return bool((SMTP_HOST and SMTP_USER and SMTP_PASS) or RESEND_API_KEY)
 
 MAX_UPLOAD = 25 * 1024 * 1024           # 25 MB per photo
 MAX_EDGE = 2400                          # downscale longest side to this for web
@@ -254,43 +275,68 @@ def _rate_ok(ip: str) -> bool:
 
 
 def send_enquiry_email(e: dict) -> bool:
-    """Best-effort delivery via the Resend HTTPS API (stdlib only). Returns True
-    on a 2xx, False otherwise (including when no API key is configured)."""
-    if not RESEND_API_KEY:
-        return False
-    import urllib.request
-    import urllib.error
+    """Best-effort delivery. Prefers SMTP (Gmail/iCloud/any, stdlib smtplib);
+    falls back to the Resend HTTPS API. Returns True on success, False otherwise
+    (including when no transport is configured)."""
     lines = [
-        f"New enquiry from your website",
-        f"",
+        "New enquiry from your website",
+        "",
         f"Name:    {e['name']}",
         f"Email:   {e['email']}",
         f"Phone:   {e.get('phone') or '—'}",
         f"Service: {e.get('service') or '—'}",
-        f"",
-        f"Message:",
+        "",
+        "Message:",
         f"{e.get('message') or ''}",
-        f"",
+        "",
         f"— Reply straight to this email to reach {e['name']}.",
     ]
-    payload = {
-        "from": RESEND_FROM,
-        "to": [RESEND_TO],
-        "reply_to": e["email"],
-        "subject": f"New enquiry — {e.get('service') or 'general'} — {e['name']}",
-        "text": "\n".join(lines),
-    }
-    req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=json.dumps(payload).encode(),
-        headers={"Authorization": f"Bearer {RESEND_API_KEY}",
-                 "Content-Type": "application/json"},
-        method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            return 200 <= r.status < 300
-    except Exception:
-        return False
+    subject = f"New enquiry — {e.get('service') or 'general'} — {e['name']}"
+    text = "\n".join(lines)
+
+    # Preferred: SMTP (Google Workspace / iCloud / any). stdlib only.
+    if SMTP_HOST and SMTP_USER and SMTP_PASS:
+        import smtplib
+        from email.message import EmailMessage
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = MAIL_FROM
+        msg["To"] = MAIL_TO
+        msg["Reply-To"] = e["email"]
+        msg.set_content(text)
+        try:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as s:
+                s.starttls()
+                s.login(SMTP_USER, SMTP_PASS)
+                s.send_message(msg)
+            return True
+        except Exception:
+            return False
+
+    # Fallback: Resend HTTPS API.
+    if RESEND_API_KEY:
+        import urllib.request
+        import urllib.error
+        payload = {
+            "from": MAIL_FROM,
+            "to": [MAIL_TO],
+            "reply_to": e["email"],
+            "subject": subject,
+            "text": text,
+        }
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=json.dumps(payload).encode(),
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}",
+                     "Content-Type": "application/json"},
+            method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return 200 <= r.status < 300
+        except Exception:
+            return False
+
+    return False
 
 
 @app.post("/api/contact")
@@ -361,7 +407,7 @@ async def admin_put_content(request: Request):
 def admin_list_enquiries(request: Request):
     require_admin(request)
     rows = q("SELECT * FROM enquiry ORDER BY id DESC")
-    return {"enquiries": rows, "mail_configured": bool(RESEND_API_KEY)}
+    return {"enquiries": rows, "mail_configured": mail_configured()}
 
 
 @app.post("/admin/api/enquiries/{eid}/resend")
@@ -370,8 +416,8 @@ def admin_resend_enquiry(eid: int, request: Request):
     rows = q("SELECT * FROM enquiry WHERE id=?", (eid,))
     if not rows:
         raise HTTPException(404, "no such enquiry")
-    if not RESEND_API_KEY:
-        raise HTTPException(400, "Email isn't configured yet (no Resend API key).")
+    if not mail_configured():
+        raise HTTPException(400, "Email isn't configured yet (no SMTP or Resend credentials).")
     sent = send_enquiry_email(rows[0])
     if sent:
         execw("UPDATE enquiry SET emailed=1 WHERE id=?", (eid,))
