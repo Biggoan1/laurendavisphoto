@@ -52,8 +52,8 @@ DEFAULT_CONTENT = {
     "gallery_sub":   "A few recent favorites.",
     "contact_heading": "Let's work together",
     "contact_body":  "Tell me a little about what you have in mind.",
-    "contact_email": "hello@laurendavisphoto.com",
-    "contact_phone": "",
+    "contact_email": "lauren.davis@dw-r.com",
+    "contact_phone": "269-270-1433",
     "instagram":     "",
     "footer":        "© Lauren Davis Photography",
     "construction_msg": ("🚧 Website Under Construction! 🚧\n\n"
