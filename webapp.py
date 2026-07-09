@@ -71,6 +71,8 @@ DEFAULT_CONTENT = {
     "svc3_desc":     "The everyday magic of your people, exactly as they are right now.",
     "svc4_name":     "Maternity",
     "svc4_desc":     "Celebrating the anticipation and the glow of this in-between season.",
+    "svc5_name":     "Birth Photography",
+    "svc5_desc":     "A gentle, respectful presence for the arrival of your baby.",
     "contact_heading": "Let's work together!",
     "contact_body":  ("Tell me a little about what you have in mind — I read every "
                       "message myself and I'll be in touch soon."),
