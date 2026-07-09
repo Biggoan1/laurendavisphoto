@@ -234,13 +234,35 @@ document.getElementById("lb").onclick = e => {
   document.getElementById("lb").classList.remove("open");
 };
 
-function renderGallery(photos){
+let allPhotos = [];
+
+function renderGallery(photos, filter="all"){
   const g = document.getElementById("gallery");
   const empty = document.getElementById("galleryEmpty");
+  if(!document.getElementById("galleryFilters")){
+    const filters = document.createElement("div");
+    filters.id = "galleryFilters";
+    filters.style.cssText = "display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;";
+    const sections = ["all","weddings","fine-art","sport","portraits"];
+    sections.forEach(s => {
+      const btn = document.createElement("button");
+      btn.textContent = s === "all" ? "All" : s.replace("-", " ").replace(/\b\w/g, c => c.toUpperCase());
+      btn.className = s === filter ? "active" : "";
+      btn.onclick = () => {
+        document.querySelectorAll("#galleryFilters button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderGallery(allPhotos, s);
+      };
+      filters.appendChild(btn);
+    });
+    g.parentNode.insertBefore(filters, g);
+  }
+  
+  const filtered = filter === "all" ? photos : photos.filter(p => p.section === filter);
   g.innerHTML = "";
-  if (!photos.length){ empty.hidden = false; return; }
+  if (!filtered.length){ empty.hidden = false; return; }
   empty.hidden = true;
-  photos.forEach(p=>{
+  filtered.forEach(p=>{
     const fig = document.createElement("figure");
     const img = document.createElement("img");
     img.src = p.url; img.alt = p.caption || "Photograph by Lauren Davis";
@@ -269,7 +291,8 @@ async function load(){
 
     if (about.length){ const a=document.getElementById("aboutImg"); a.src=about[0].url; a.hidden=false; }
 
-    renderGallery(gallery);
+    allPhotos = gallery;
+    renderGallery(allPhotos, "all");
   }catch(e){ console.error("load failed", e); }
 }
 load();
