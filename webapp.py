@@ -30,6 +30,14 @@ ADMIN_EMAILS = {e.strip().lower()
                 for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 RUN_QUEUE_WORKER = os.environ.get("SITE_QUEUE_WORKER", "1") != "0"
 
+# Contact-form email delivery (Resend HTTPS API — stdlib urllib, no extra dep).
+# If RESEND_API_KEY is unset the form still works: every enquiry is stored in the
+# DB and readable in /admin; email just stays deferred (emailed=0) until a key is set.
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_FROM = os.environ.get(
+    "RESEND_FROM", "Lauren Davis Photography <lauren.davis@dw-r.com>")
+RESEND_TO = os.environ.get("RESEND_TO", "lauren.davis@dw-r.com")
+
 MAX_UPLOAD = 25 * 1024 * 1024           # 25 MB per photo
 MAX_EDGE = 2400                          # downscale longest side to this for web
 ALLOWED_IMG = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -41,28 +49,36 @@ DEFAULT_CONTENT = {
     "site_title":    "Lauren Davis Photography",
     "nav_brand":     "Lauren Davis",
     "hero_heading":  "Lauren Davis Photography",
-    "hero_sub":      "Portraits, weddings & everyday moments — made to last.",
-    "hero_cta":      "Get in touch",
+    "hero_sub":      "Honest, timeless photographs of the people and moments you love.",
+    "hero_cta":      "Send an enquiry",
+    "intro_body":    ("Some moments are too good to let slip by. I make photographs "
+                      "that hold onto them — the quiet in-between and the joy out "
+                      "loud — so the feeling stays long after the day is done."),
     "about_heading": "About",
     "about_body":    ("I'm Lauren, a photographer who loves natural light and "
                       "honest moments. Whether it's a wedding, a family session, "
                       "or a portrait, my goal is simple: photographs you'll "
                       "treasure for years."),
-    "gallery_heading": "Work",
-    "gallery_sub":   "A few recent favorites.",
-    "contact_heading": "Let's work together",
-    "contact_body":  "Tell me a little about what you have in mind.",
+    "gallery_heading": "Portfolio",
+    "gallery_sub":   "A little of the work I love making.",
+    "services_heading": "Services",
+    "services_sub":  "However you'd like to be remembered, there's a session for it.",
+    "svc1_name":     "Weddings",
+    "svc1_desc":     "The whole day, told honestly — the vows, the tears, and the dance floor at midnight.",
+    "svc2_name":     "Newborn & Baby",
+    "svc2_desc":     "Gentle, unhurried sessions for your newest and tiniest arrival.",
+    "svc3_name":     "Family",
+    "svc3_desc":     "The everyday magic of your people, exactly as they are right now.",
+    "svc4_name":     "Maternity",
+    "svc4_desc":     "Celebrating the anticipation and the glow of this in-between season.",
+    "contact_heading": "Let's work together!",
+    "contact_body":  ("Tell me a little about what you have in mind — I read every "
+                      "message myself and I'll be in touch soon."),
+    "contact_form_note": "I'll never share your details, and there's no obligation to book.",
+    "form_success":  "Thank you — your message is on its way to Lauren. She'll be in touch soon. ✨",
     "contact_email": "lauren.davis@dw-r.com",
-    "contact_phone": "269-270-1433",
     "instagram":     "",
     "footer":        "© Lauren Davis Photography",
-    "construction_msg": ("🚧 Website Under Construction! 🚧\n\n"
-                         "As my business grows, so must my professionalism! "
-                         "I'm working hard on bringing you the absolute best product and experience. "
-                         "Thank you SO much for your patience — I can't wait to show you what's coming! ✨\n\n"
-                         "In the meantime, feel free to reach out:\n"
-                         "📞 269-270-1433\n"
-                         "📧 lauren.davis@dw-r.com"),
 }
 
 # ---------------------------------------------------------------- db helpers
@@ -115,6 +131,11 @@ def ensure_schema():
         filename TEXT NOT NULL, original_name TEXT, caption TEXT DEFAULT '',
         section TEXT DEFAULT 'gallery', sort INTEGER DEFAULT 0,
         w INTEGER, h INTEGER, created_at TEXT)""")
+    execw("""CREATE TABLE IF NOT EXISTS enquiry(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT DEFAULT '',
+        service TEXT DEFAULT '', message TEXT DEFAULT '',
+        ip TEXT DEFAULT '', emailed INTEGER DEFAULT 0, created_at TEXT)""")
     execw("""CREATE TABLE IF NOT EXISTS feature_request(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL, description TEXT DEFAULT '', page TEXT DEFAULT '',
@@ -206,6 +227,101 @@ def media(filename: str):
     return FileResponse(p)
 
 
+# ---------------------------------------------------------------- contact form
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_RATE = {}                                # ip -> [timestamps]; naive in-proc limiter
+_RATE_LOCK = threading.Lock()
+_RATE_MAX = 5                             # max submissions ...
+_RATE_WINDOW = 600                        # ... per 10 minutes per IP
+
+
+def _rate_ok(ip: str) -> bool:
+    if not ip:
+        return True
+    cut = time.time() - _RATE_WINDOW
+    with _RATE_LOCK:
+        hits = [t for t in _RATE.get(ip, []) if t > cut]
+        if len(hits) >= _RATE_MAX:
+            _RATE[ip] = hits
+            return False
+        hits.append(time.time())
+        _RATE[ip] = hits
+        return True
+
+
+def send_enquiry_email(e: dict) -> bool:
+    """Best-effort delivery via the Resend HTTPS API (stdlib only). Returns True
+    on a 2xx, False otherwise (including when no API key is configured)."""
+    if not RESEND_API_KEY:
+        return False
+    import urllib.request
+    import urllib.error
+    lines = [
+        f"New enquiry from your website",
+        f"",
+        f"Name:    {e['name']}",
+        f"Email:   {e['email']}",
+        f"Phone:   {e.get('phone') or '—'}",
+        f"Service: {e.get('service') or '—'}",
+        f"",
+        f"Message:",
+        f"{e.get('message') or ''}",
+        f"",
+        f"— Reply straight to this email to reach {e['name']}.",
+    ]
+    payload = {
+        "from": RESEND_FROM,
+        "to": [RESEND_TO],
+        "reply_to": e["email"],
+        "subject": f"New enquiry — {e.get('service') or 'general'} — {e['name']}",
+        "text": "\n".join(lines),
+    }
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode(),
+        headers={"Authorization": f"Bearer {RESEND_API_KEY}",
+                 "Content-Type": "application/json"},
+        method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return 200 <= r.status < 300
+    except Exception:
+        return False
+
+
+@app.post("/api/contact")
+async def contact(request: Request):
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(400, "bad request")
+    # Honeypot: bots fill hidden fields. Pretend success, store nothing.
+    if (body.get("website") or body.get("company") or "").strip():
+        return {"ok": True}
+    name = (body.get("name") or "").strip()[:120]
+    email = (body.get("email") or "").strip()[:200]
+    phone = (body.get("phone") or "").strip()[:60]
+    service = (body.get("service") or "").strip()[:80]
+    message = (body.get("message") or "").strip()[:5000]
+    if not name or not email or not message:
+        raise HTTPException(400, "Please fill in your name, email and a message.")
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(400, "That email address doesn't look right.")
+    ip = (request.headers.get("cf-connecting-ip")
+          or (request.client.host if request.client else "") or "")
+    if not _rate_ok(ip):
+        raise HTTPException(429, "You've sent a few messages already — please try again shortly.")
+    eid = insertw(
+        "INSERT INTO enquiry(name,email,phone,service,message,ip,emailed,created_at)"
+        " VALUES(?,?,?,?,?,?,0,?)",
+        (name, email, phone, service, message, ip, now()))
+    sent = send_enquiry_email(
+        {"name": name, "email": email, "phone": phone,
+         "service": service, "message": message})
+    if sent:
+        execw("UPDATE enquiry SET emailed=1 WHERE id=?", (eid,))
+    return {"ok": True, "id": eid}
+
+
 # ---------------------------------------------------------------- admin: identity
 @app.get("/admin/api/me")
 def admin_me(request: Request):
@@ -234,6 +350,37 @@ async def admin_put_content(request: Request):
         else:
             execw("INSERT INTO content(key,value,updated_at) VALUES(?,?,?)", (k, v, now()))
     return {"saved": len(body)}
+
+
+# ---------------------------------------------------------------- admin: enquiries
+@app.get("/admin/api/enquiries")
+def admin_list_enquiries(request: Request):
+    require_admin(request)
+    rows = q("SELECT * FROM enquiry ORDER BY id DESC")
+    return {"enquiries": rows, "mail_configured": bool(RESEND_API_KEY)}
+
+
+@app.post("/admin/api/enquiries/{eid}/resend")
+def admin_resend_enquiry(eid: int, request: Request):
+    require_admin(request)
+    rows = q("SELECT * FROM enquiry WHERE id=?", (eid,))
+    if not rows:
+        raise HTTPException(404, "no such enquiry")
+    if not RESEND_API_KEY:
+        raise HTTPException(400, "Email isn't configured yet (no Resend API key).")
+    sent = send_enquiry_email(rows[0])
+    if sent:
+        execw("UPDATE enquiry SET emailed=1 WHERE id=?", (eid,))
+    return {"ok": sent}
+
+
+@app.delete("/admin/api/enquiries/{eid}")
+def admin_delete_enquiry(eid: int, request: Request):
+    require_admin(request)
+    if not q("SELECT 1 FROM enquiry WHERE id=?", (eid,)):
+        raise HTTPException(404, "no such enquiry")
+    execw("DELETE FROM enquiry WHERE id=?", (eid,))
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- admin: photos

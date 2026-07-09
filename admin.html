@@ -117,6 +117,7 @@
 <div class="tabs">
   <button class="tab active" data-tab="content">Text &amp; content</button>
   <button class="tab" data-tab="photos">Photos</button>
+  <button class="tab" data-tab="enquiries">Enquiries</button>
   <button class="tab" data-tab="requests">Feature requests</button>
 </div>
 
@@ -155,6 +156,18 @@
       </div>
       <div id="uploadStatus" class="small muted" style="margin-top:8px"></div>
       <div class="pgrid" id="photoGrid"></div>
+    </div>
+  </section>
+
+  <!-- ENQUIRIES -->
+  <section class="panel" id="tab-enquiries">
+    <div class="card">
+      <div class="row" style="justify-content:space-between; margin-bottom:10px">
+        <div><strong>Contact form enquiries</strong>
+          <div class="small muted" id="enqStatus">Everything visitors send from the contact form lands here.</div></div>
+        <button id="refreshEnq">Refresh</button>
+      </div>
+      <div id="enqList"></div>
     </div>
   </section>
 
@@ -208,6 +221,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
   t.classList.add("active"); $("#tab-"+t.dataset.tab).classList.add("active");
   if (t.dataset.tab==="photos") loadPhotos();
+  if (t.dataset.tab==="enquiries") loadEnquiries();
   if (t.dataset.tab==="requests") loadFeatures();
 });
 
@@ -216,13 +230,23 @@ api("/admin/api/me").then(m=>{ $("#who").textContent = m.email && m.email!=="loc
 
 // ---------------- CONTENT ----------------
 const LABELS = {
-  site_title:"Browser tab title", nav_brand:"Header name", hero_heading:"Hero heading",
-  hero_sub:"Hero subtitle", hero_cta:"Hero button text", about_heading:"About heading",
-  about_body:"About text", gallery_heading:"Portfolio heading", gallery_sub:"Portfolio subtitle",
-  contact_heading:"Contact heading", contact_body:"Contact text", contact_email:"Contact email",
-  contact_phone:"Contact phone", instagram:"Instagram handle", footer:"Footer text"
+  site_title:"Browser tab title", nav_brand:"Your name (header & footer)",
+  hero_heading:"Hero — small label", hero_sub:"Hero — main line", hero_cta:"Enquiry button text",
+  intro_body:"Intro statement",
+  gallery_heading:"Portfolio heading", gallery_sub:"Portfolio subtitle",
+  services_heading:"Services heading", services_sub:"Services subtitle",
+  svc1_name:"Service 1 — name", svc1_desc:"Service 1 — description",
+  svc2_name:"Service 2 — name", svc2_desc:"Service 2 — description",
+  svc3_name:"Service 3 — name", svc3_desc:"Service 3 — description",
+  svc4_name:"Service 4 — name", svc4_desc:"Service 4 — description",
+  about_heading:"About heading", about_body:"About text",
+  contact_heading:"Contact heading", contact_body:"Contact text",
+  contact_form_note:"Small note under the form", form_success:"Message shown after sending",
+  contact_email:"Your email (kept private — not shown on the site)",
+  instagram:"Instagram handle", footer:"Footer text"
 };
-const LONG = new Set(["about_body","contact_body","hero_sub"]);
+const LONG = new Set(["about_body","contact_body","hero_sub","intro_body","services_sub",
+  "svc1_desc","svc2_desc","svc3_desc","svc4_desc","contact_form_note","form_success"]);
 async function loadContent(){
   const c = await api("/admin/api/content");
   const f = $("#contentForm"); f.innerHTML="";
@@ -301,6 +325,47 @@ async function reorder(ids, id, dir){
   await api("/admin/api/photos/reorder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({order:ids})});
   loadPhotos();
 }
+
+// ---------------- ENQUIRIES ----------------
+function fmtDate(s){ if(!s) return ""; const d=new Date(s.replace(" ","T")); return isNaN(d)?s:d.toLocaleString(); }
+async function loadEnquiries(){
+  let data; try{ data = await api("/admin/api/enquiries"); }catch(e){ $("#enqList").innerHTML='<div class="muted small">Couldn\'t load enquiries.</div>'; return; }
+  const st=$("#enqStatus");
+  st.innerHTML = data.mail_configured
+    ? "Emailed to you as they arrive, and saved here too."
+    : "⚠ Email isn't switched on yet — enquiries are being <strong>saved here</strong> so nothing is lost. They'll also email you once the mail key is set.";
+  const list=$("#enqList");
+  if(!data.enquiries.length){ list.innerHTML='<div class="muted small" style="padding:8px 0">No enquiries yet.</div>'; return; }
+  list.innerHTML = data.enquiries.map(e=>{
+    const mailed = e.emailed ? '<span class="badge" style="color:var(--ok)">emailed ✓</span>'
+                             : '<span class="badge">saved</span>';
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="row" style="justify-content:space-between; align-items:flex-start">
+        <div>
+          <strong>${esc(e.name)}</strong> ${mailed}
+          <div class="small muted">${esc(e.service||"—")} · ${fmtDate(e.created_at)}</div>
+          <div class="small" style="margin-top:4px">
+            <a href="mailto:${esc(e.email)}?subject=Re%3A%20your%20enquiry">${esc(e.email)}</a>
+            ${e.phone?" · "+esc(e.phone):""}</div>
+        </div>
+        <div class="row">
+          <a class="btn" href="mailto:${esc(e.email)}?subject=Re%3A%20your%20enquiry">Reply</a>
+          <button data-resend="${e.id}">Resend to me</button>
+          <button class="danger" data-delenq="${e.id}">Delete</button>
+        </div>
+      </div>
+      <div style="margin-top:10px; white-space:pre-wrap">${esc(e.message)}</div>
+    </div>`;
+  }).join("");
+  list.querySelectorAll("[data-resend]").forEach(b=>b.onclick=async()=>{
+    try{ const r=await api("/admin/api/enquiries/"+b.dataset.resend+"/resend",{method:"POST"});
+      toast(r.ok?"Sent to your inbox ✓":"Couldn't send — check the mail key"); loadEnquiries(); }
+    catch(e){ toast(e.message); } });
+  list.querySelectorAll("[data-delenq]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("Delete this enquiry?")) return;
+    await api("/admin/api/enquiries/"+b.dataset.delenq,{method:"DELETE"}); loadEnquiries(); });
+}
+$("#refreshEnq").onclick = loadEnquiries;
 
 // ---------------- REQUESTS (kanban) ----------------
 let featTimer=null, coderReady=false;
