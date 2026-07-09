@@ -73,6 +73,8 @@ DEFAULT_CONTENT = {
     "svc4_desc":     "Celebrating the anticipation and the glow of this in-between season.",
     "svc5_name":     "Birth Photography",
     "svc5_desc":     "A gentle, respectful presence for the arrival of your baby.",
+    "svc6_name":     "Graduation",
+    "svc6_desc":     "Celebrating the milestones and hard work — from kindergarten to college, captured with pride.",
     "contact_heading": "Let's work together!",
     "contact_body":  ("Tell me a little about what you have in mind — I read every "
                       "message myself and I'll be in touch soon."),
