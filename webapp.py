@@ -117,7 +117,7 @@ DEFAULT_CONTENT = {
     "bundle_price":  "$1,500",
     "bundle_note":   "$200 off rather than booking each.",
     "perfect_day_name": "The Perfect Day Package",
-    "perfect_day_desc": "engagement photos + your wedding day from beginning to end",
+    "perfect_day_desc": "Engagement photos + your wedding day from beginning to end",
     "contact_heading": "Let's work together!",
     "contact_body":  ("Tell me a little about what you have in mind — I read every "
                       "message myself and I'll be in touch soon."),
