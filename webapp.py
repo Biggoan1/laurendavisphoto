@@ -111,6 +111,10 @@ DEFAULT_CONTENT = {
     "wed_pkg4_price": "$1,500",
     "wed_pkg4_note": "(Save $250!)",
     "wedding_packages_intro": "Choose a package that fits your day:",
+    "bundle_name":   "The Bundle of Joy",
+    "bundle_desc":   "Maternity shoot, birth session, and newborn shoot.",
+    "bundle_price":  "$1,500",
+    "bundle_note":   "$200 off rather than booking each.",
     "contact_heading": "Let's work together!",
     "contact_body":  ("Tell me a little about what you have in mind — I read every "
                       "message myself and I'll be in touch soon."),
