@@ -267,14 +267,20 @@
         <p class="svc-price" data-content="perfect_day_price"></p>
       </article>
     </div>
-    <div class="services-note">
-      <p data-content="services_note">I can be commissioned for other types of events or fine art! Just send an enquiry and we can make a plan together!</p>
+    <div class="services-notes">
+      <div class="services-note">
+        <p data-content="services_note">I can be commissioned for other types of events or fine art! Just send an enquiry and we can make a plan together!</p>
+      </div>
+      <div class="services-note">
+        <p data-content="commission_box2_text">Another box for custom requests or special offers.</p>
+      </div>
     </div>
   </div>
 </section>
 
 <style>
-  .services-note { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--border, #e2e2e2); border-radius: 8px; background: var(--bg, #fff); text-align: center; }
+  .services-notes { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 2rem; }
+  .services-note { flex: 1 1 300px; padding: 1.5rem; border: 1px solid var(--border, #e2e2e2); border-radius: 8px; background: var(--bg, #fff); text-align: center; }
   .wedding-packages { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border, #e2e2e2); }
   .pkg-intro { font-size: 0.95rem; margin-bottom: 0.75rem; }
   .package-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
