@@ -96,6 +96,11 @@ DEFAULT_CONTENT = {
     "svc5_desc":     "A gentle, respectful presence for the arrival of your baby.",
     "svc6_name":     "Graduation",
     "svc6_desc":     "Celebrating the milestones and hard work — from kindergarten to college, captured with pride.",
+    "svc2_price":    "$350",
+    "svc3_price":    "$250",
+    "svc4_price":    "$350",
+    "svc5_price":    "$1,000",
+    "svc6_price":    "$250",
     "contact_heading": "Let's work together!",
     "contact_body":  ("Tell me a little about what you have in mind — I read every "
                       "message myself and I'll be in touch soon."),
