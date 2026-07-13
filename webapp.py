@@ -75,7 +75,7 @@ DEFAULT_CONTENT = {
     "intro_body":    ("Some moments are too good to let slip by. I make photographs "
                       "that hold onto them — the quiet in-between and the joy out "
                       "loud — so the feeling stays long after the day is done."),
-    "about_heading": "About",
+    "about_heading": "Get to Know the Girl Behind the Camera",
     "about_body":    ("I'm Lauren, a photographer who loves natural light and "
                       "honest moments. Whether it's a wedding, a family session, "
                       "or a portrait, my goal is simple: photographs you'll "
