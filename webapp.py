@@ -86,6 +86,7 @@ DEFAULT_CONTENT = {
     "services_sub":  "However you'd like to be remembered, there's a session for it.",
     "services_note": "I can be commissioned for other types of events or fine art! Just send an enquiry and we can make a plan together!",
     "commission_box_text": "Interested in a custom commission? Send me a message and let's discuss your vision.",
+    "commission_box2_text": "Another box for custom requests or special offers.",
     "svc1_name":     "Weddings",
     "svc1_desc":     "The whole day, told honestly — the vows, the tears, and the dance floor at midnight.",
     "svc2_name":     "Newborn & Baby",
