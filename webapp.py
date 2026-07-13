@@ -109,7 +109,7 @@ DEFAULT_CONTENT = {
     "wed_pkg3_price": "$1,000",
     "wed_pkg4_name": '"The Perfect Day" Package',
     "wed_pkg4_price": "$1,500",
-    "wed_pkg4_note": "(Save $250!)",
+    "wed_pkg4_note": "($200 off)",
     "wedding_packages_intro": "Choose a package that fits your day:",
     "bundle_name":   "The Bundle of Joy",
     "bundle_desc":   "Maternity shoot, birth session, and newborn shoot.",
