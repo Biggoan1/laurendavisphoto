@@ -231,7 +231,19 @@
       <p class="lead" data-content="services_sub"></p>
     </div>
     <div class="services-list">
-      <article><h3 data-content="svc1_name">Weddings</h3><p data-content="svc1_desc"></p></article>
+      <article>
+        <h3 data-content="svc1_name">Weddings</h3>
+        <p data-content="svc1_desc"></p>
+        <div class="wedding-packages">
+          <p class="pkg-intro" data-content="wedding_packages_intro">Choose a package that fits your day:</p>
+          <ul class="package-list">
+            <li><strong data-content="wed_pkg1_name">Engagement Only</strong> <span data-content="wed_pkg1_price">$250</span></li>
+            <li><strong data-content="wed_pkg2_name">Ceremony Only</strong> <span data-content="wed_pkg2_price">$500</span></li>
+            <li><strong data-content="wed_pkg3_name">Getting Ready + Ceremony + Reception</strong> <span data-content="wed_pkg3_price">$1,000</span></li>
+            <li><strong data-content="wed_pkg4_name">"Perfect Day" Package</strong> <span data-content="wed_pkg4_price">$1,500</span> <span class="pkg-note" data-content="wed_pkg4_note">(Save $250!)</span></li>
+          </ul>
+        </div>
+      </article>
       <article><h3 data-content="svc2_name">Newborn &amp; Baby</h3><p data-content="svc2_desc"></p><p class="svc-price" data-content="svc2_price"></p></article>
       <article><h3 data-content="svc3_name">Family</h3><p data-content="svc3_desc"></p><p class="svc-price" data-content="svc3_price"></p></article>
       <article><h3 data-content="svc4_name">Maternity</h3><p data-content="svc4_desc"></p><p class="svc-price" data-content="svc4_price"></p></article>
@@ -240,6 +252,16 @@
     </div>
   </div>
 </section>
+
+<style>
+  .wedding-packages { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border, #e2e2e2); }
+  .pkg-intro { font-size: 0.95rem; color: var(--muted, #666); margin-bottom: 0.75rem; }
+  .package-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+  .package-list li { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.95rem; }
+  .package-list li strong { font-weight: 600; }
+  .package-list li span[data-content] { color: var(--accent, #2a5d6e); font-weight: 500; }
+  .pkg-note { font-size: 0.8rem; color: var(--success, #2e7d32); margin-left: 0.5rem; }
+</style>
 
 <section id="about" class="wrap">
   <div class="about">
