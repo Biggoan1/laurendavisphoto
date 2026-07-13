@@ -84,6 +84,7 @@ DEFAULT_CONTENT = {
     "gallery_sub":   "A little of the work I love making.",
     "services_heading": "Services",
     "services_sub":  "However you'd like to be remembered, there's a session for it.",
+    "services_note": "I can be commissioned for other types of events or fine art! Just send an enquiry and we can make a plan together!",
     "svc1_name":     "Weddings",
     "svc1_desc":     "The whole day, told honestly — the vows, the tears, and the dance floor at midnight.",
     "svc2_name":     "Newborn & Baby",
