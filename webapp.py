@@ -92,7 +92,7 @@ DEFAULT_CONTENT = {
     "svc3_desc":     "The everyday magic of your people, exactly as they are right now.",
     "svc4_name":     "Maternity",
     "svc4_desc":     "Celebrating the anticipation and the glow of this in-between season.",
-    "svc5_name":     "Birth Photography",
+    "svc5_name":     "Birth",
     "svc5_desc":     "A gentle, respectful presence for the arrival of your baby.",
     "svc6_name":     "Graduation",
     "svc6_desc":     "Celebrating the milestones and hard work — from kindergarten to college, captured with pride.",
