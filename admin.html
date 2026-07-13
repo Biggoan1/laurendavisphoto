@@ -234,7 +234,7 @@ const LABELS = {
   hero_heading:"Hero — small label", hero_sub:"Hero — main line", hero_cta:"Enquiry button text",
   intro_body:"Intro statement",
   gallery_heading:"Portfolio heading", gallery_sub:"Portfolio subtitle",
-  services_heading:"Services heading", services_sub:"Services subtitle",
+  services_heading:"Services heading", services_sub:"Services subtitle", services_note:"Services — commission note",
   svc1_name:"Service 1 — name", svc1_desc:"Service 1 — description",
   svc2_name:"Service 2 — name", svc2_desc:"Service 2 — description",
   svc3_name:"Service 3 — name", svc3_desc:"Service 3 — description",
@@ -254,7 +254,7 @@ const LABELS = {
   contact_email:"Your email (kept private — not shown on the site)",
   instagram:"Instagram handle", footer:"Footer text"
 };
-const LONG = new Set(["about_body","contact_body","hero_sub","intro_body","services_sub",
+const LONG = new Set(["about_body","contact_body","hero_sub","intro_body","services_sub","services_note",
   "svc1_desc","svc2_desc","svc3_desc","svc4_desc","svc5_desc","svc6_desc","contact_form_note","form_success"]);
 async function loadContent(){
   const c = await api("/admin/api/content");
