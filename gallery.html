@@ -105,11 +105,12 @@
   .lb img{ max-width:92vw; max-height:88vh; }
   .lb .x{ position:absolute; top:20px; right:28px; color:#fff; font-size:2.2rem;
           cursor:pointer; background:none; border:none; line-height:1; }
-  .lb .dl{ position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
-           color:#fff; border:1px solid rgba(255,255,255,.7); padding:.6rem 1.6rem;
-           font-size:.7rem; text-transform:uppercase; letter-spacing:.26em;
-           text-decoration:none; }
-  .lb .dl:hover{ background:#fff; color:#1b1917; }
+  .lb .dls{ position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+            display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  .lb .dls a{ color:#fff; border:1px solid rgba(255,255,255,.7); padding:.6rem 1.6rem;
+              font-size:.7rem; text-transform:uppercase; letter-spacing:.26em;
+              text-decoration:none; white-space:nowrap; }
+  .lb .dls a:hover{ background:#fff; color:#1b1917; }
 </style>
 </head>
 <body>
@@ -154,7 +155,10 @@
 <div class="lb" id="lb">
   <button class="x" id="lbx" aria-label="Close">×</button>
   <img id="lbimg" alt="">
-  <a class="dl" id="lbdl" href="#" download>Download</a>
+  <div class="dls">
+    <a id="lbdl" href="#" download>Download</a>
+    <a id="lbdlorig" href="#" download hidden>Download original</a>
+  </div>
 </div>
 
 <script>
@@ -189,11 +193,14 @@ async function j(u, opt){
 function lightbox(p){
   document.getElementById("lbimg").src = p.url;
   document.getElementById("lbdl").href = p.url + "?download=1";
+  const o = document.getElementById("lbdlorig");
+  o.href = p.url + "?download=1&orig=1";
+  o.hidden = !p.has_orig;
   document.getElementById("lb").classList.add("open");
 }
 document.getElementById("lbx").onclick =
 document.getElementById("lb").onclick = e => {
-  if (e.target.id === "lbimg" || e.target.id === "lbdl") return;
+  if (["lbimg","lbdl","lbdlorig"].includes(e.target.id)) return;
   document.getElementById("lb").classList.remove("open");
 };
 
@@ -219,7 +226,9 @@ async function loadPhotos(){
     img.src = p.url; img.alt = p.caption || "Photograph by Lauren Davis"; img.loading = "lazy";
     fig.appendChild(img);
     const dl = document.createElement("a");
-    dl.className = "dl"; dl.href = p.url + "?download=1"; dl.title = "Download";
+    dl.className = "dl";
+    dl.href = p.url + "?download=1" + (p.has_orig ? "&orig=1" : "");
+    dl.title = p.has_orig ? "Download original" : "Download";
     dl.textContent = "↓"; dl.onclick = e => e.stopPropagation();
     fig.appendChild(dl);
     fig.onclick = () => lightbox(p);

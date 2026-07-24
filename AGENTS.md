@@ -21,6 +21,9 @@ before editing.
   clients unlock with an access code (HMAC-signed cookie). Gallery photos live
   under `data/private/` and are ONLY served through the code-checked
   `/api/gallery/...` endpoints — never through `/media/` or `/api/photos`.
+  Each upload keeps TWO files: the downscaled web copy (viewing) and the
+  untouched original `orig-*` (full res, EXIF intact) served by
+  `?download=1&orig=1` — deletes must remove both.
 - A **FastAPI backend** (`webapp.py`, single file, plain SQL via the helpers
   `q()`, `execw()`, `insertw()`; idempotent schema in `ensure_schema()`).
 

@@ -212,6 +212,11 @@ def ensure_schema():
         gallery_id INTEGER NOT NULL, filename TEXT NOT NULL,
         original_name TEXT, caption TEXT DEFAULT '', sort INTEGER DEFAULT 0,
         w INTEGER, h INTEGER, created_at TEXT)""")
+    # orig_filename: the untouched upload (full resolution, EXIF intact) kept
+    # beside the downscaled web copy; downloads serve it. '' on older rows.
+    if not any(c["name"] == "orig_filename"
+               for c in q("PRAGMA table_info(gallery_photo)")):
+        execw("ALTER TABLE gallery_photo ADD COLUMN orig_filename TEXT DEFAULT ''")
     for k, v in DEFAULT_CONTENT.items():
         if not q("SELECT 1 FROM content WHERE key=?", (k,)):
             execw("INSERT INTO content(key,value,updated_at) VALUES(?,?,?)",
@@ -498,28 +503,36 @@ def gallery_photos(slug: str, request: Request):
     g = _gallery_by_slug(slug)
     if not _gal_unlocked(request, slug):
         raise HTTPException(401, "unlock this gallery first")
-    photos = q("SELECT id,caption,original_name,sort,w,h FROM gallery_photo "
-               "WHERE gallery_id=? ORDER BY sort,id", (g["id"],))
+    photos = q("SELECT id,caption,original_name,sort,w,h,orig_filename "
+               "FROM gallery_photo WHERE gallery_id=? ORDER BY sort,id", (g["id"],))
     for p in photos:
         p["url"] = f"/api/gallery/{slug}/photo/{p['id']}"
+        p["has_orig"] = bool(p.pop("orig_filename"))
     return {"name": g["name"], "welcome": g["welcome"],
             "event_date": g["event_date"], "photos": photos}
 
 
 @app.get("/api/gallery/{slug}/photo/{pid}")
-def gallery_photo(slug: str, pid: int, request: Request, download: int = 0):
+def gallery_photo(slug: str, pid: int, request: Request,
+                  download: int = 0, orig: int = 0):
+    """Serves the web copy for viewing; ?download=1 downloads it, and
+    ?download=1&orig=1 downloads the untouched full-resolution original
+    (falls back to the web copy for photos uploaded before originals were kept)."""
     g = _gallery_by_slug(slug)
     if not _gal_unlocked(request, slug):
         raise HTTPException(401, "unlock this gallery first")
-    rows = q("SELECT filename,original_name FROM gallery_photo "
+    rows = q("SELECT filename,orig_filename,original_name FROM gallery_photo "
              "WHERE id=? AND gallery_id=?", (pid, g["id"]))
     if not rows:
         raise HTTPException(404)
-    p = PRIVATE / rows[0]["filename"]
+    r = rows[0]
+    p = PRIVATE / r["filename"]
+    if orig and r["orig_filename"] and (PRIVATE / r["orig_filename"]).exists():
+        p = PRIVATE / r["orig_filename"]
     if not p.exists():
         raise HTTPException(404)
     if download:
-        return FileResponse(p, filename=rows[0]["original_name"] or rows[0]["filename"])
+        return FileResponse(p, filename=r["original_name"] or r["filename"])
     return FileResponse(p)
 
 
@@ -751,11 +764,14 @@ def admin_delete_gallery(gid: int, request: Request):
     require_admin(request)
     if not q("SELECT 1 FROM gallery WHERE id=?", (gid,)):
         raise HTTPException(404, "no such gallery")
-    for r in q("SELECT filename FROM gallery_photo WHERE gallery_id=?", (gid,)):
-        try:
-            (PRIVATE / r["filename"]).unlink(missing_ok=True)
-        except OSError:
-            pass
+    for r in q("SELECT filename,orig_filename FROM gallery_photo "
+               "WHERE gallery_id=?", (gid,)):
+        for fn in (r["filename"], r["orig_filename"]):
+            try:
+                if fn:
+                    (PRIVATE / fn).unlink(missing_ok=True)
+            except OSError:
+                pass
     execw("DELETE FROM gallery_photo WHERE gallery_id=?", (gid,))
     execw("DELETE FROM gallery WHERE id=?", (gid,))
     return {"ok": True}
@@ -777,10 +793,13 @@ async def admin_gallery_upload(gid: int, request: Request,
         if f.content_type and f.content_type not in ALLOWED_IMG:
             raise HTTPException(400, f"{f.filename}: unsupported type {f.content_type}")
         meta = _store_image(raw, f.filename or "photo", dest=PRIVATE)
+        # keep the untouched original beside the web copy — downloads serve it
+        orig = f"orig-{meta['filename']}"
+        (PRIVATE / orig).write_bytes(raw)
         pid = insertw(
-            "INSERT INTO gallery_photo(gallery_id,filename,original_name,caption,"
-            "sort,w,h,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (gid, meta["filename"], f.filename, "", base + i,
+            "INSERT INTO gallery_photo(gallery_id,filename,orig_filename,"
+            "original_name,caption,sort,w,h,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (gid, meta["filename"], orig, f.filename, "", base + i,
              meta["w"], meta["h"], now()))
         saved.append({"id": pid})
     return {"uploaded": saved}
@@ -799,15 +818,17 @@ def admin_gallery_photo(gid: int, pid: int, request: Request):
 @app.delete("/admin/api/galleries/{gid}/photos/{pid}")
 def admin_delete_gallery_photo(gid: int, pid: int, request: Request):
     require_admin(request)
-    rows = q("SELECT filename FROM gallery_photo WHERE id=? AND gallery_id=?",
-             (pid, gid))
+    rows = q("SELECT filename,orig_filename FROM gallery_photo "
+             "WHERE id=? AND gallery_id=?", (pid, gid))
     if not rows:
         raise HTTPException(404, "no such photo")
     execw("DELETE FROM gallery_photo WHERE id=?", (pid,))
-    try:
-        (PRIVATE / rows[0]["filename"]).unlink(missing_ok=True)
-    except OSError:
-        pass
+    for fn in (rows[0]["filename"], rows[0]["orig_filename"]):
+        try:
+            if fn:
+                (PRIVATE / fn).unlink(missing_ok=True)
+        except OSError:
+            pass
     return {"ok": True}
 
 
