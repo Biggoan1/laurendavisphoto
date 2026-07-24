@@ -19,6 +19,9 @@ services:
       - FEATURE_CODERS=${FEATURE_CODERS:-qwen}
       - FEATURE_CODER_URL=${FEATURE_CODER_URL:-http://10.100.0.13:8080/v1/chat/completions}
       - FEATURE_CODER_MODEL=${FEATURE_CODER_MODEL:-qwen3.6-35b}
+      # used automatically when the primary LLM endpoint (AI3) is offline
+      - FEATURE_CODER_FALLBACK_URL=${FEATURE_CODER_FALLBACK_URL:-http://10.100.0.23:8080/v1/chat/completions}
+      - FEATURE_CODER_FALLBACK_MODEL=${FEATURE_CODER_FALLBACK_MODEL:-qwen3.6-27b}
       # Email (contact form). SMTP is preferred; Resend is a fallback.
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}

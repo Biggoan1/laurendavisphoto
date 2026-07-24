@@ -117,6 +117,7 @@
 <div class="tabs">
   <button class="tab active" data-tab="content">Text &amp; content</button>
   <button class="tab" data-tab="photos">Photos</button>
+  <button class="tab" data-tab="galleries">Client galleries</button>
   <button class="tab" data-tab="enquiries">Enquiries</button>
   <button class="tab" data-tab="requests">Feature requests</button>
 </div>
@@ -157,6 +158,23 @@
       <div id="uploadStatus" class="small muted" style="margin-top:8px"></div>
       <div class="pgrid" id="photoGrid"></div>
     </div>
+  </section>
+
+  <!-- CLIENT GALLERIES -->
+  <section class="panel" id="tab-galleries">
+    <div class="card" style="margin-bottom:16px">
+      <div><strong>Create a client gallery</strong>
+        <div class="small muted">A private page where one client can view the photos from their session or event, behind an access code. Send them the link and the code — that's all they need.</div></div>
+      <div class="cgrid" style="margin-top:8px">
+        <div><label>Gallery name</label><input id="galName" placeholder="e.g. Smith Wedding"></div>
+        <div><label>Event date (optional)</label><input id="galDate" placeholder="e.g. June 14, 2026"></div>
+        <div class="full"><label>Access code (leave blank and I'll make one)</label><input id="galCode" placeholder="auto-generated"></div>
+      </div>
+      <div class="row" style="margin-top:12px; justify-content:flex-end">
+        <button class="primary" id="addGal">Create gallery</button>
+      </div>
+    </div>
+    <div id="galList"></div>
   </section>
 
   <!-- ENQUIRIES -->
@@ -221,6 +239,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
   t.classList.add("active"); $("#tab-"+t.dataset.tab).classList.add("active");
   if (t.dataset.tab==="photos") loadPhotos();
+  if (t.dataset.tab==="galleries") loadGalleries();
   if (t.dataset.tab==="enquiries") loadEnquiries();
   if (t.dataset.tab==="requests") loadFeatures();
 });
@@ -337,6 +356,94 @@ async function reorder(ids, id, dir){
   ids.splice(j,0,ids.splice(i,1)[0]);
   await api("/admin/api/photos/reorder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({order:ids})});
   loadPhotos();
+}
+
+// ---------------- CLIENT GALLERIES ----------------
+$("#addGal").onclick = async ()=>{
+  const name=$("#galName").value.trim(); if(!name){ toast("Give the gallery a name"); return; }
+  try{
+    await api("/admin/api/galleries",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({name, event_date:$("#galDate").value.trim(), code:$("#galCode").value.trim()})});
+    $("#galName").value=""; $("#galDate").value=""; $("#galCode").value="";
+    toast("Gallery created ✓"); loadGalleries();
+  }catch(e){ toast("Failed: "+e.message); }
+};
+
+function copyText(t){
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    return navigator.clipboard.writeText(t).then(()=>true, ()=>copyFallback(t));
+  return Promise.resolve(copyFallback(t));
+}
+function copyFallback(t){
+  const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta);
+  ta.select(); let ok=false; try{ ok=document.execCommand("copy"); }catch(_){}
+  ta.remove(); return ok;
+}
+
+async function loadGalleries(){
+  let data; try{ data=await api("/admin/api/galleries"); }
+  catch(e){ $("#galList").innerHTML='<div class="muted small">Couldn\'t load galleries.</div>'; return; }
+  const list=$("#galList");
+  if(!data.galleries.length){ list.innerHTML='<div class="muted small" style="padding:8px 0">No client galleries yet — create the first one above.</div>'; return; }
+  list.innerHTML = data.galleries.map(g=>`
+    <div class="card" style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between; align-items:flex-start">
+        <div>
+          <strong>${esc(g.name)}</strong> <span class="badge">${g.count} photo${g.count===1?"":"s"}</span>
+          <div class="small muted">${g.event_date?esc(g.event_date)+" · ":""}Code: <strong>${esc(g.code)}</strong> · <a href="${g.url}" target="_blank">${g.url}</a></div>
+        </div>
+        <div class="row">
+          <button data-galcopy="${g.id}">Copy link + code</button>
+          <a class="btn" href="${g.url}" target="_blank">Open ↗</a>
+          <button class="danger" data-galdel="${g.id}">Delete gallery</button>
+        </div>
+      </div>
+      <label>Welcome note (optional — shown at the top of their gallery)</label>
+      <textarea data-galwelcome="${g.id}" rows="2">${esc(g.welcome||"")}</textarea>
+      <div class="row" style="margin-top:8px; justify-content:flex-end">
+        <button data-galsavew="${g.id}">Save note</button>
+        <button class="primary" data-galup="${g.id}">Add photos</button>
+        <input type="file" data-galfile="${g.id}" accept="image/*" multiple hidden>
+      </div>
+      <div class="small muted" data-galstatus="${g.id}"></div>
+      <div class="pgrid">${g.photos.map(p=>`
+        <div class="pcard"><img src="/admin/api/galleries/${g.id}/photo/${p.id}" loading="lazy" alt="">
+          <div class="row"><button class="danger" data-gpdel="${g.id}:${p.id}" title="Remove">✕</button></div>
+        </div>`).join("")}</div>
+    </div>`).join("");
+
+  const gals = Object.fromEntries(data.galleries.map(g=>[String(g.id), g]));
+  list.querySelectorAll("[data-galcopy]").forEach(b=>b.onclick=async()=>{
+    const g=gals[b.dataset.galcopy];
+    await copyText(location.origin+g.url+"\nAccess code: "+g.code);
+    toast("Link + code copied — paste into an email or text ✓");
+  });
+  list.querySelectorAll("[data-galdel]").forEach(b=>b.onclick=async()=>{
+    const g=gals[b.dataset.galdel];
+    if(!confirm('Delete "'+g.name+'" and all its photos? The client\'s link will stop working.')) return;
+    await api("/admin/api/galleries/"+g.id,{method:"DELETE"}); toast("Gallery deleted"); loadGalleries();
+  });
+  list.querySelectorAll("[data-galsavew]").forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.galsavew;
+    try{ await api("/admin/api/galleries/"+id,{method:"PATCH",headers:{"content-type":"application/json"},
+      body:JSON.stringify({welcome:list.querySelector('[data-galwelcome="'+id+'"]').value})}); toast("Saved ✓"); }
+    catch(e){ toast(e.message); }
+  });
+  list.querySelectorAll("[data-galup]").forEach(b=>b.onclick=()=>list.querySelector('[data-galfile="'+b.dataset.galup+'"]').click());
+  list.querySelectorAll("[data-galfile]").forEach(inp=>inp.onchange=async()=>{
+    const id=inp.dataset.galfile, st=list.querySelector('[data-galstatus="'+id+'"]');
+    if(!inp.files.length) return;
+    const fd=new FormData(); [...inp.files].forEach(f=>fd.append("files", f));
+    st.textContent="Uploading "+inp.files.length+" photo(s)…";
+    try{ const r=await api("/admin/api/galleries/"+id+"/photos",{method:"POST",body:fd});
+      st.textContent=""; toast("Uploaded "+r.uploaded.length+" ✓"); loadGalleries(); }
+    catch(e){ st.textContent="Upload failed: "+e.message; }
+  });
+  list.querySelectorAll("[data-gpdel]").forEach(b=>b.onclick=async()=>{
+    const [gid,pid]=b.dataset.gpdel.split(":");
+    if(!confirm("Remove this photo from the gallery?")) return;
+    await api("/admin/api/galleries/"+gid+"/photos/"+pid,{method:"DELETE"}); loadGalleries();
+  });
 }
 
 // ---------------- ENQUIRIES ----------------

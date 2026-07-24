@@ -8,9 +8,12 @@ that hands work to a local LLM one item at a time (see feature_coder.py).
 Editable-by-AI source files: webapp.py, index.html, admin.html.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import sqlite3
 import threading
 import time
@@ -22,9 +25,11 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 APP_DIR = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("SITE_DATA", str(APP_DIR / "data")))
 MEDIA = DATA / "media"
+PRIVATE = DATA / "private"               # client-gallery photos; never under /media
 DB = DATA / "site.db"
 DATA.mkdir(parents=True, exist_ok=True)
 MEDIA.mkdir(parents=True, exist_ok=True)
+PRIVATE.mkdir(parents=True, exist_ok=True)
 
 ADMIN_EMAILS = {e.strip().lower()
                 for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
@@ -198,6 +203,15 @@ def ensure_schema():
         branch TEXT DEFAULT '', log TEXT DEFAULT '', diff TEXT DEFAULT '',
         files TEXT DEFAULT '', error TEXT DEFAULT '',
         created_at TEXT, updated_at TEXT)""")
+    execw("""CREATE TABLE IF NOT EXISTS gallery(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT UNIQUE NOT NULL, name TEXT NOT NULL, code TEXT NOT NULL,
+        welcome TEXT DEFAULT '', event_date TEXT DEFAULT '', created_at TEXT)""")
+    execw("""CREATE TABLE IF NOT EXISTS gallery_photo(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        gallery_id INTEGER NOT NULL, filename TEXT NOT NULL,
+        original_name TEXT, caption TEXT DEFAULT '', sort INTEGER DEFAULT 0,
+        w INTEGER, h INTEGER, created_at TEXT)""")
     for k, v in DEFAULT_CONTENT.items():
         if not q("SELECT 1 FROM content WHERE key=?", (k,)):
             execw("INSERT INTO content(key,value,updated_at) VALUES(?,?,?)",
@@ -285,17 +299,18 @@ _RATE_MAX = 5                             # max submissions ...
 _RATE_WINDOW = 600                        # ... per 10 minutes per IP
 
 
-def _rate_ok(ip: str) -> bool:
+def _rate_ok(ip: str, store: dict = _RATE, maximum: int = _RATE_MAX,
+             window: int = _RATE_WINDOW) -> bool:
     if not ip:
         return True
-    cut = time.time() - _RATE_WINDOW
+    cut = time.time() - window
     with _RATE_LOCK:
-        hits = [t for t in _RATE.get(ip, []) if t > cut]
-        if len(hits) >= _RATE_MAX:
-            _RATE[ip] = hits
+        hits = [t for t in store.get(ip, []) if t > cut]
+        if len(hits) >= maximum:
+            store[ip] = hits
             return False
         hits.append(time.time())
-        _RATE[ip] = hits
+        store[ip] = hits
         return True
 
 
@@ -397,6 +412,117 @@ async def contact(request: Request):
     return {"ok": True, "id": eid}
 
 
+# ---------------------------------------------------------------- client galleries
+# Private, passcode-gated galleries so clients can view the photos from their
+# own session/event. Photos live under PRIVATE (never served by /media); access
+# is an HMAC-signed cookie minted when the client enters the gallery's code.
+_GAL_RATE = {}                            # ip -> code attempts (shares _rate_ok)
+GAL_TTL = 30 * 86400                      # unlock cookie lifetime: 30 days
+
+
+def _gallery_secret() -> bytes:
+    p = DATA / "gallery.secret"
+    if not p.exists():
+        p.write_text(secrets.token_hex(32))
+        try:
+            p.chmod(0o600)
+        except OSError:
+            pass
+    return p.read_text().strip().encode()
+
+
+def _gal_sign(slug: str, exp: int) -> str:
+    return hmac.new(_gallery_secret(), f"{slug}.{exp}".encode(),
+                    hashlib.sha256).hexdigest()
+
+
+def _gal_token(slug: str) -> str:
+    exp = int(time.time()) + GAL_TTL
+    return f"{exp}.{_gal_sign(slug, exp)}"
+
+
+def _gal_unlocked(request: Request, slug: str) -> bool:
+    tok = request.cookies.get(f"gal_{slug}") or ""
+    exp, _, sig = tok.partition(".")
+    if not exp.isdigit() or int(exp) < time.time():
+        return False
+    return hmac.compare_digest(sig, _gal_sign(slug, int(exp)))
+
+
+def _gallery_by_slug(slug: str) -> dict:
+    rows = q("SELECT * FROM gallery WHERE slug=?", (slug,))
+    if not rows:
+        raise HTTPException(404, "no such gallery")
+    return rows[0]
+
+
+@app.get("/gallery/{slug}", response_class=HTMLResponse)
+def gallery_page(slug: str):
+    _gallery_by_slug(slug)
+    return _page("gallery.html")
+
+
+@app.get("/api/gallery/{slug}/state")
+def gallery_state(slug: str, request: Request):
+    g = _gallery_by_slug(slug)
+    return {"name": g["name"], "event_date": g["event_date"],
+            "unlocked": _gal_unlocked(request, slug)}
+
+
+@app.post("/api/gallery/{slug}/unlock")
+async def gallery_unlock(slug: str, request: Request):
+    g = _gallery_by_slug(slug)
+    body = await request.json()
+    code = (body.get("code") or "").strip() if isinstance(body, dict) else ""
+    ip = (request.headers.get("cf-connecting-ip")
+          or (request.client.host if request.client else "") or "")
+    if not _rate_ok(ip, _GAL_RATE, maximum=10):
+        raise HTTPException(429, "Too many tries — please wait a few minutes.")
+    if not code or not hmac.compare_digest(code.upper(), g["code"].upper()):
+        raise HTTPException(403, "That code doesn't match — check the note from Lauren.")
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(f"gal_{slug}", _gal_token(slug), max_age=GAL_TTL,
+                    httponly=True, samesite="lax")
+    return resp
+
+
+@app.post("/api/gallery/{slug}/lock")
+def gallery_lock(slug: str):
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(f"gal_{slug}")
+    return resp
+
+
+@app.get("/api/gallery/{slug}/photos")
+def gallery_photos(slug: str, request: Request):
+    g = _gallery_by_slug(slug)
+    if not _gal_unlocked(request, slug):
+        raise HTTPException(401, "unlock this gallery first")
+    photos = q("SELECT id,caption,original_name,sort,w,h FROM gallery_photo "
+               "WHERE gallery_id=? ORDER BY sort,id", (g["id"],))
+    for p in photos:
+        p["url"] = f"/api/gallery/{slug}/photo/{p['id']}"
+    return {"name": g["name"], "welcome": g["welcome"],
+            "event_date": g["event_date"], "photos": photos}
+
+
+@app.get("/api/gallery/{slug}/photo/{pid}")
+def gallery_photo(slug: str, pid: int, request: Request, download: int = 0):
+    g = _gallery_by_slug(slug)
+    if not _gal_unlocked(request, slug):
+        raise HTTPException(401, "unlock this gallery first")
+    rows = q("SELECT filename,original_name FROM gallery_photo "
+             "WHERE id=? AND gallery_id=?", (pid, g["id"]))
+    if not rows:
+        raise HTTPException(404)
+    p = PRIVATE / rows[0]["filename"]
+    if not p.exists():
+        raise HTTPException(404)
+    if download:
+        return FileResponse(p, filename=rows[0]["original_name"] or rows[0]["filename"])
+    return FileResponse(p)
+
+
 # ---------------------------------------------------------------- admin: identity
 @app.get("/admin/api/me")
 def admin_me(request: Request):
@@ -464,8 +590,8 @@ def _slug(name: str) -> str:
     return base[:60]
 
 
-def _store_image(raw: bytes, original_name: str) -> dict:
-    """Validate, optionally downscale/strip EXIF, save under MEDIA. Returns meta."""
+def _store_image(raw: bytes, original_name: str, dest: Path = MEDIA) -> dict:
+    """Validate, optionally downscale/strip EXIF, save under dest. Returns meta."""
     from io import BytesIO
     from PIL import Image, ImageOps
     try:
@@ -481,7 +607,7 @@ def _store_image(raw: bytes, original_name: str) -> dict:
         im.thumbnail((MAX_EDGE, MAX_EDGE), Image.LANCZOS)
     stem = _slug(Path(original_name).stem)
     fname = f"{int(time.time()*1000)}-{stem}.{ext}"
-    out = MEDIA / fname
+    out = dest / fname
     save_kw = {"quality": 88, "optimize": True} if fmt in ("JPEG", "WEBP") else {}
     if fmt == "GIF":
         Image.open(BytesIO(raw)).save(out)          # keep animation intact
@@ -549,6 +675,137 @@ def admin_delete_photo(pid: int, request: Request):
     execw("DELETE FROM photos WHERE id=?", (pid,))
     try:
         (MEDIA / rows[0]["filename"]).unlink(missing_ok=True)
+    except OSError:
+        pass
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- admin: galleries
+_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"   # unambiguous: no 0/O/1/I/L
+
+
+def _gen_code(n: int = 6) -> str:
+    return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(n))
+
+
+def _gallery_slug(name: str) -> str:
+    """URL slug from the name plus a short random suffix so links can't be
+    guessed by trying client names."""
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40] or "gallery"
+    while True:
+        slug = f"{base}-{secrets.token_hex(2)}"
+        if not q("SELECT 1 FROM gallery WHERE slug=?", (slug,)):
+            return slug
+
+
+@app.get("/admin/api/galleries")
+def admin_list_galleries(request: Request):
+    require_admin(request)
+    gals = q("SELECT * FROM gallery ORDER BY id DESC")
+    for g in gals:
+        g["photos"] = q("SELECT id,caption FROM gallery_photo WHERE gallery_id=? "
+                        "ORDER BY sort,id", (g["id"],))
+        g["count"] = len(g["photos"])
+        g["url"] = f"/gallery/{g['slug']}"
+    return {"galleries": gals}
+
+
+@app.post("/admin/api/galleries")
+async def admin_create_gallery(request: Request):
+    require_admin(request)
+    body = await request.json()
+    name = (body.get("name") or "").strip()[:120]
+    if not name:
+        raise HTTPException(400, "give the gallery a name")
+    code = (body.get("code") or "").strip().upper()[:40] or _gen_code()
+    gid = insertw(
+        "INSERT INTO gallery(slug,name,code,welcome,event_date,created_at)"
+        " VALUES(?,?,?,?,?,?)",
+        (_gallery_slug(name), name, code,
+         (body.get("welcome") or "").strip()[:2000],
+         (body.get("event_date") or "").strip()[:40], now()))
+    return q("SELECT * FROM gallery WHERE id=?", (gid,))[0]
+
+
+@app.patch("/admin/api/galleries/{gid}")
+async def admin_edit_gallery(gid: int, request: Request):
+    require_admin(request)
+    if not q("SELECT 1 FROM gallery WHERE id=?", (gid,)):
+        raise HTTPException(404, "no such gallery")
+    body = await request.json()
+    if str(body.get("name") or "").strip():
+        execw("UPDATE gallery SET name=? WHERE id=?",
+              (str(body["name"]).strip()[:120], gid))
+    if str(body.get("code") or "").strip():
+        execw("UPDATE gallery SET code=? WHERE id=?",
+              (str(body["code"]).strip().upper()[:40], gid))
+    for col in ("welcome", "event_date"):
+        if col in body:
+            execw(f"UPDATE gallery SET {col}=? WHERE id=?",
+                  (str(body[col] or "").strip()[:2000], gid))
+    return {"ok": True}
+
+
+@app.delete("/admin/api/galleries/{gid}")
+def admin_delete_gallery(gid: int, request: Request):
+    require_admin(request)
+    if not q("SELECT 1 FROM gallery WHERE id=?", (gid,)):
+        raise HTTPException(404, "no such gallery")
+    for r in q("SELECT filename FROM gallery_photo WHERE gallery_id=?", (gid,)):
+        try:
+            (PRIVATE / r["filename"]).unlink(missing_ok=True)
+        except OSError:
+            pass
+    execw("DELETE FROM gallery_photo WHERE gallery_id=?", (gid,))
+    execw("DELETE FROM gallery WHERE id=?", (gid,))
+    return {"ok": True}
+
+
+@app.post("/admin/api/galleries/{gid}/photos")
+async def admin_gallery_upload(gid: int, request: Request,
+                               files: list[UploadFile] = File(...)):
+    require_admin(request)
+    if not q("SELECT 1 FROM gallery WHERE id=?", (gid,)):
+        raise HTTPException(404, "no such gallery")
+    base = q("SELECT COALESCE(MAX(sort),0) AS m FROM gallery_photo "
+             "WHERE gallery_id=?", (gid,))[0]["m"]
+    saved = []
+    for i, f in enumerate(files, 1):
+        raw = await f.read()
+        if len(raw) > MAX_UPLOAD:
+            raise HTTPException(413, f"{f.filename} exceeds 25 MB")
+        if f.content_type and f.content_type not in ALLOWED_IMG:
+            raise HTTPException(400, f"{f.filename}: unsupported type {f.content_type}")
+        meta = _store_image(raw, f.filename or "photo", dest=PRIVATE)
+        pid = insertw(
+            "INSERT INTO gallery_photo(gallery_id,filename,original_name,caption,"
+            "sort,w,h,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (gid, meta["filename"], f.filename, "", base + i,
+             meta["w"], meta["h"], now()))
+        saved.append({"id": pid})
+    return {"uploaded": saved}
+
+
+@app.get("/admin/api/galleries/{gid}/photo/{pid}")
+def admin_gallery_photo(gid: int, pid: int, request: Request):
+    require_admin(request)
+    rows = q("SELECT filename FROM gallery_photo WHERE id=? AND gallery_id=?",
+             (pid, gid))
+    if not rows or not (PRIVATE / rows[0]["filename"]).exists():
+        raise HTTPException(404)
+    return FileResponse(PRIVATE / rows[0]["filename"])
+
+
+@app.delete("/admin/api/galleries/{gid}/photos/{pid}")
+def admin_delete_gallery_photo(gid: int, pid: int, request: Request):
+    require_admin(request)
+    rows = q("SELECT filename FROM gallery_photo WHERE id=? AND gallery_id=?",
+             (pid, gid))
+    if not rows:
+        raise HTTPException(404, "no such photo")
+    execw("DELETE FROM gallery_photo WHERE id=?", (pid,))
+    try:
+        (PRIVATE / rows[0]["filename"]).unlink(missing_ok=True)
     except OSError:
         pass
     return {"ok": True}

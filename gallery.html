@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Gallery · Lauren Davis Photography</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* Same warm editorial theme as the main site. */
+  :root{
+    color-scheme: light dark;
+    --bg:#F6F2EA; --fg:#26221C; --muted:#8C8375; --line:#E4DCCD;
+    --card:#FCFAF5; --accent:#6B6A5C; --gold:#B9915A;
+    --serif:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --sans:"Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --shadow:0 18px 50px rgba(38,34,28,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1B1917; --fg:#ECE6DC; --muted:#9A9284; --line:#2E2A25;
+           --card:#221F1B; --accent:#C9BB9C; --gold:#C9A66B; --shadow:0 18px 50px rgba(0,0,0,.5); }
+  }
+  :root[data-theme="light"]{ color-scheme:light;
+    --bg:#F6F2EA; --fg:#26221C; --muted:#8C8375; --line:#E4DCCD;
+    --card:#FCFAF5; --accent:#6B6A5C; --gold:#B9915A; --shadow:0 18px 50px rgba(38,34,28,.10); }
+  :root[data-theme="dark"]{ color-scheme:dark;
+    --bg:#1B1917; --fg:#ECE6DC; --muted:#9A9284; --line:#2E2A25;
+    --card:#221F1B; --accent:#C9BB9C; --gold:#C9A66B; --shadow:0 18px 50px rgba(0,0,0,.5); }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ background:var(--bg); color:var(--fg); font-family:var(--sans);
+        font-weight:300; line-height:1.75; -webkit-font-smoothing:antialiased; min-height:100vh; }
+  a{ color:inherit; }
+  img{ max-width:100%; display:block; }
+  h1,h2{ font-family:var(--serif); font-weight:400; line-height:1.08; margin:0; letter-spacing:.01em; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 28px; }
+  .eyebrow{ text-transform:uppercase; letter-spacing:.32em; font-size:.7rem;
+            font-weight:400; color:var(--muted); margin:0 0 1rem; }
+  .muted{ color:var(--muted); } .small{ font-size:.86rem; }
+
+  .btn{ display:inline-block; background:transparent; color:var(--fg);
+        border:1px solid var(--fg); padding:.85rem 2rem; border-radius:0;
+        font-family:var(--sans); font-size:.72rem; text-transform:uppercase;
+        letter-spacing:.26em; font-weight:400; text-decoration:none;
+        transition:background .25s ease, color .25s ease; cursor:pointer; }
+  .btn:hover{ background:var(--fg); color:var(--bg); }
+
+  header.top{ padding:26px 0; border-bottom:1px solid var(--line); }
+  header.top .wrap{ display:flex; align-items:center; gap:20px; }
+  .brand{ font-family:var(--serif); font-size:1.4rem; letter-spacing:.04em;
+          text-decoration:none; margin-right:auto; }
+  .themebtn{ background:none; border:none; color:inherit; cursor:pointer;
+             font-size:1rem; opacity:.8; }
+  .themebtn:hover{ opacity:1; }
+  .signout{ background:none; border:none; color:var(--muted); cursor:pointer;
+            font-family:var(--sans); font-size:.72rem; text-transform:uppercase;
+            letter-spacing:.22em; padding:0; }
+  .signout:hover{ color:var(--fg); }
+
+  /* passcode gate */
+  .gate{ min-height:calc(100vh - 90px); display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+  .gate .card{ background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow);
+               padding:60px 48px; max-width:460px; width:100%; text-align:center; }
+  .gate h1{ font-size:clamp(1.8rem,4.5vw,2.6rem); }
+  .gate p.sub{ color:var(--muted); margin:1.2rem 0 2rem; }
+  .gate input{ width:100%; font-family:var(--sans); font-size:1.25rem; font-weight:300;
+               text-align:center; letter-spacing:.35em; text-transform:uppercase;
+               padding:.8rem 0; border:none; border-bottom:1px solid var(--line);
+               background:transparent; color:var(--fg); border-radius:0; }
+  .gate input:focus{ outline:none; border-bottom-color:var(--gold); }
+  .gate .btn{ margin-top:2rem; width:100%; }
+  #gateMsg{ margin-top:1.2rem; font-size:.9rem; min-height:1.4em; }
+  #gateMsg.err{ color:#b5563f; }
+
+  /* gallery view */
+  .galhead{ text-align:center; padding:80px 0 50px; }
+  .galhead h1{ font-size:clamp(2.2rem,5.5vw,3.6rem); }
+  .galhead .date{ margin-top:.9rem; }
+  .galhead .welcome{ font-family:var(--serif); font-style:italic; font-size:1.25rem;
+                     max-width:52ch; margin:1.6rem auto 0; color:var(--muted); }
+  .grid{ columns:3 260px; column-gap:18px; padding-bottom:90px; }
+  .grid figure{ margin:0 0 18px; break-inside:avoid; overflow:hidden; cursor:zoom-in;
+                background:var(--card); position:relative; }
+  .grid img{ width:100%; transition:transform .7s cubic-bezier(.2,.6,.2,1); }
+  .grid figure:hover img{ transform:scale(1.04); }
+  .grid .dl{ position:absolute; right:10px; bottom:10px; background:rgba(20,18,15,.55);
+             color:#fff; border:none; width:38px; height:38px; border-radius:999px;
+             cursor:pointer; font-size:1rem; opacity:0; transition:opacity .25s ease;
+             display:flex; align-items:center; justify-content:center; text-decoration:none; }
+  .grid figure:hover .dl{ opacity:1; }
+  @media (hover:none){ .grid .dl{ opacity:.85; } }
+  .empty{ color:var(--muted); border:1px dashed var(--line); padding:48px;
+          text-align:center; margin-bottom:90px; }
+
+  footer{ padding:50px 0; text-align:center; color:var(--muted); border-top:1px solid var(--line); }
+  footer .small{ letter-spacing:.06em; }
+
+  /* lightbox */
+  .lb{ position:fixed; inset:0; background:rgba(20,18,15,.95); display:none;
+       align-items:center; justify-content:center; z-index:80; padding:24px; }
+  .lb.open{ display:flex; }
+  .lb img{ max-width:92vw; max-height:88vh; }
+  .lb .x{ position:absolute; top:20px; right:28px; color:#fff; font-size:2.2rem;
+          cursor:pointer; background:none; border:none; line-height:1; }
+  .lb .dl{ position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+           color:#fff; border:1px solid rgba(255,255,255,.7); padding:.6rem 1.6rem;
+           font-size:.7rem; text-transform:uppercase; letter-spacing:.26em;
+           text-decoration:none; }
+  .lb .dl:hover{ background:#fff; color:#1b1917; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/">Lauren Davis</a>
+  <button class="signout" id="signout" hidden>Sign out</button>
+  <button class="themebtn" id="themebtn" title="Toggle light/dark" aria-label="Toggle theme">◐</button>
+</div></header>
+
+<!-- passcode gate -->
+<div class="gate" id="gate" hidden>
+  <div class="card">
+    <p class="eyebrow">Private gallery</p>
+    <h1 id="gateName">Your Gallery</h1>
+    <p class="sub">This gallery is just for you. Enter the access code Lauren shared with you.</p>
+    <form id="gateForm">
+      <input id="codeInput" autocomplete="off" spellcheck="false" placeholder="ACCESS CODE" aria-label="Access code">
+      <button class="btn" type="submit" id="unlockBtn">View my photos</button>
+    </form>
+    <div id="gateMsg"></div>
+  </div>
+</div>
+
+<!-- unlocked gallery -->
+<div id="gallery" hidden>
+  <div class="galhead wrap">
+    <p class="eyebrow">Your photographs</p>
+    <h1 id="galName"></h1>
+    <p class="date muted small" id="galDate" hidden></p>
+    <p class="welcome" id="galWelcome" hidden></p>
+  </div>
+  <div class="wrap">
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="galEmpty" hidden>Your photos are being prepared — check back soon.</div>
+  </div>
+</div>
+
+<footer><div class="wrap">
+  <div class="small">Photographs by Lauren Davis · <a href="/">laurendavisphoto.com</a></div>
+</div></footer>
+
+<div class="lb" id="lb">
+  <button class="x" id="lbx" aria-label="Close">×</button>
+  <img id="lbimg" alt="">
+  <a class="dl" id="lbdl" href="#" download>Download</a>
+</div>
+
+<script>
+// ---- theme toggle (same behavior as the main site) ----
+const root = document.documentElement;
+const saved = localStorage.getItem("ldp-theme");
+if (saved) root.setAttribute("data-theme", saved);
+document.getElementById("themebtn").onclick = () => {
+  const cur = root.getAttribute("data-theme");
+  const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  let next;
+  if (cur === "auto" || !cur) next = prefersDark ? "light" : "dark";
+  else if (cur === "light") next = "dark";
+  else next = "light";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("ldp-theme", next);
+};
+
+const slug = location.pathname.split("/").filter(Boolean).pop();
+const api = p => "/api/gallery/" + encodeURIComponent(slug) + p;
+
+async function j(u, opt){
+  const r = await fetch(u, opt);
+  if (!r.ok){
+    let d = ""; try{ d = (await r.json()).detail || ""; }catch(_){}
+    throw new Error(d || (r.status + " " + r.statusText));
+  }
+  return r.json();
+}
+
+// ---- lightbox ----
+function lightbox(p){
+  document.getElementById("lbimg").src = p.url;
+  document.getElementById("lbdl").href = p.url + "?download=1";
+  document.getElementById("lb").classList.add("open");
+}
+document.getElementById("lbx").onclick =
+document.getElementById("lb").onclick = e => {
+  if (e.target.id === "lbimg" || e.target.id === "lbdl") return;
+  document.getElementById("lb").classList.remove("open");
+};
+
+// ---- views ----
+function show(which){
+  document.getElementById("gate").hidden = which !== "gate";
+  document.getElementById("gallery").hidden = which !== "gallery";
+  document.getElementById("signout").hidden = which !== "gallery";
+}
+
+async function loadPhotos(){
+  const g = await j(api("/photos"));
+  document.getElementById("galName").textContent = g.name;
+  document.title = g.name + " · Lauren Davis Photography";
+  if (g.event_date){ const d = document.getElementById("galDate"); d.textContent = g.event_date; d.hidden = false; }
+  if (g.welcome){ const w = document.getElementById("galWelcome"); w.textContent = g.welcome; w.hidden = false; }
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  document.getElementById("galEmpty").hidden = g.photos.length > 0;
+  g.photos.forEach(p => {
+    const fig = document.createElement("figure");
+    const img = document.createElement("img");
+    img.src = p.url; img.alt = p.caption || "Photograph by Lauren Davis"; img.loading = "lazy";
+    fig.appendChild(img);
+    const dl = document.createElement("a");
+    dl.className = "dl"; dl.href = p.url + "?download=1"; dl.title = "Download";
+    dl.textContent = "↓"; dl.onclick = e => e.stopPropagation();
+    fig.appendChild(dl);
+    fig.onclick = () => lightbox(p);
+    grid.appendChild(fig);
+  });
+  show("gallery");
+}
+
+document.getElementById("gateForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = document.getElementById("gateMsg"), btn = document.getElementById("unlockBtn");
+  const code = document.getElementById("codeInput").value.trim();
+  if (!code){ msg.className = "err"; msg.textContent = "Please enter your code."; return; }
+  btn.disabled = true; msg.className = ""; msg.textContent = "";
+  try{
+    await j(api("/unlock"), {method:"POST", headers:{"content-type":"application/json"},
+                             body: JSON.stringify({code})});
+    await loadPhotos();
+  }catch(err){
+    msg.className = "err"; msg.textContent = err.message || "That code didn't work.";
+  }finally{ btn.disabled = false; }
+});
+
+document.getElementById("signout").onclick = async () => {
+  try{ await j(api("/lock"), {method:"POST"}); }catch(_){}
+  document.getElementById("codeInput").value = "";
+  show("gate");
+};
+
+// ---- boot ----
+(async function(){
+  try{
+    const s = await j(api("/state"));
+    document.getElementById("gateName").textContent = s.name;
+    document.title = s.name + " · Lauren Davis Photography";
+    if (s.unlocked){
+      try{ await loadPhotos(); return; }catch(_){ /* expired — fall back to the gate */ }
+    }
+  }catch(e){
+    document.getElementById("gateName").textContent = "Gallery not found";
+    document.querySelector(".gate .sub").textContent =
+      "This link doesn't match a gallery — double-check the address Lauren sent you.";
+    document.getElementById("gateForm").hidden = true;
+  }
+  show("gate");
+})();
+</script>
+</body>
+</html>

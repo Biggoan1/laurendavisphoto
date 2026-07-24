@@ -13,7 +13,14 @@ before editing.
   while the *layout and design* live in this file (that's what you edit).
 - A private **admin** page (`admin.html`), same single-file style, reached at
   `/admin` (gated by Cloudflare Access). Tabs: Content (edit text), Photos
-  (upload/caption/reorder/delete), and Requests (this feature board).
+  (upload/caption/reorder/delete), Client galleries, Enquiries, and Requests
+  (this feature board).
+- A **client gallery** page (`gallery.html`, served at `/gallery/{slug}`): a
+  private, passcode-gated gallery where one client views the photos from their
+  own event. The owner creates galleries and uploads their photos in /admin;
+  clients unlock with an access code (HMAC-signed cookie). Gallery photos live
+  under `data/private/` and are ONLY served through the code-checked
+  `/api/gallery/...` endpoints — never through `/media/` or `/api/photos`.
 - A **FastAPI backend** (`webapp.py`, single file, plain SQL via the helpers
   `q()`, `execw()`, `insertw()`; idempotent schema in `ensure_schema()`).
 
@@ -31,7 +38,10 @@ before editing.
   Content tab — never hardcode owner-facing copy in `index.html`.
 
 ## Hard rules
-- You may ONLY edit these files: `webapp.py`, `index.html`, `admin.html`.
+- You may ONLY edit these files: `webapp.py`, `index.html`, `admin.html`,
+  `gallery.html`.
+- Client-gallery photos are private. Never serve files from `data/private/`
+  without the gallery unlock check (`_gal_unlocked`) or `require_admin`.
 - Never touch: `feature_coder.py`, `.env`, anything under `data/`, secrets, or
   the deploy key. Never add dependencies. Never rename existing routes, DB
   columns, content keys, or element IDs that other code relies on.
@@ -42,11 +52,15 @@ before editing.
   commits, and (on the owner's approval) merges + pushes to GitHub for you.
 
 ## Where things are (webapp.py)
-- `ensure_schema()` — tables: `content`, `photos`, `feature_request`,
-  `feature_attempt`. Add columns idempotently here if you truly need them.
+- `ensure_schema()` — tables: `content`, `photos`, `enquiry`, `gallery`,
+  `gallery_photo`, `feature_request`, `feature_attempt`. Add columns
+  idempotently here if you truly need them.
 - `DEFAULT_CONTENT` — seed text keys.
-- Public routes: `/`, `/api/content`, `/api/photos`, `/media/{file}`, `/healthz`.
-- Admin routes: `/admin`, `/admin/api/...` (content, photos, features).
+- Public routes: `/`, `/api/content`, `/api/photos`, `/media/{file}`, `/healthz`,
+  `/api/contact`, and the gallery routes `/gallery/{slug}` +
+  `/api/gallery/{slug}/(state|unlock|lock|photos|photo/{id})`.
+- Admin routes: `/admin`, `/admin/api/...` (content, photos, galleries,
+  enquiries, features).
 - The feature-request queue worker builds one request at a time (WIP-limit 1).
 
 Make the smallest clean change that implements the request, in the file's

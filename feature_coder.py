@@ -8,7 +8,8 @@ code until she approves the merge — the AI never deploys on its own.
 
 Adapted from the FMI app's feature_coder. Backends (FEATURE_CODERS env,
 comma-separated, first is default):
-  qwen  — a local llama.cpp OpenAI endpoint (default: AI3 qwen3.6-35b). We drive
+  qwen  — a local llama.cpp OpenAI endpoint (default: AI3 qwen3.6-35b, with an
+          automatic fallback to AI2 qwen3.6-27b when AI3 is offline). We drive
           it: a PLAN call picks file regions from outlines, a PATCH call returns
           SEARCH/REPLACE blocks, one repair round if a block doesn't apply.
   claude/codex — the CLI edits the worktree itself (only if installed + logged in).
@@ -43,20 +44,27 @@ DEFAULT_BACKEND = BACKENDS[0] if BACKENDS else "qwen"
 LLM_URL = (os.environ.get("FEATURE_CODER_URL")
            or "http://10.100.0.13:8080/v1/chat/completions")
 LLM_MODEL = os.environ.get("FEATURE_CODER_MODEL") or "qwen3.6-35b"
+# Fallback endpoint used automatically when the primary is unreachable
+# (AI3 is sometimes powered down; AI2's llama-swap serves qwen3.6-27b).
+LLM_FALLBACK_URL = (os.environ.get("FEATURE_CODER_FALLBACK_URL")
+                    or "http://10.100.0.23:8080/v1/chat/completions")
+LLM_FALLBACK_MODEL = os.environ.get("FEATURE_CODER_FALLBACK_MODEL") or "qwen3.6-27b"
 VET_URL = os.environ.get("FEATURE_VET_URL") or ""
 VET_MODEL = os.environ.get("FEATURE_VET_MODEL") or ""
 GIT_ID = ["-c", "user.name=LDP Feature Coder", "-c", "user.email=coder@laurendavisphoto"]
 
 # the AI may only touch app source; never the harness, secrets, or data
-EDITABLE = ["webapp.py", "index.html", "admin.html"]
+EDITABLE = ["webapp.py", "index.html", "admin.html", "gallery.html"]
 
 APP_CONTEXT = """The app is a FastAPI + SQLite website for a photographer,
 Lauren Davis. Backend: webapp.py (single file, plain SQL via q()/execw()/
 insertw(), idempotent schema in ensure_schema()). Frontends are single-file
 vanilla-JS pages served by webapp.py: index.html (public landing page — hero,
 gallery, about, contact; renders text from /api/content and photos from
-/api/photos) and admin.html (owner tools under /admin: content editor, photo
-manager, feature board). House style: no frameworks, no build step, no new pip
+/api/photos), admin.html (owner tools under /admin: content editor, photo
+manager, client galleries, feature board) and gallery.html (private client
+gallery at /gallery/<slug>, passcode-gated). House style: no frameworks, no
+build step, no new pip
 dependencies, small helpers, theme follows the browser (prefers-color-scheme).
 Owner-editable copy lives in the content table, not hardcoded in index.html."""
 
@@ -80,18 +88,48 @@ def _git(args, cwd=REPO, check=True, timeout=120):
     return r.stdout
 
 
+def _llm_reachable(url: str) -> bool:
+    try:
+        req = urllib.request.Request(url.replace("/chat/completions", "/models"))
+        urllib.request.urlopen(req, timeout=4).read()
+        return True
+    except Exception:
+        return False
+
+
+_EP_CACHE = {"at": 0.0, "ep": None}      # picked (url, model, primary?) for 60s
+
+
+def _llm_endpoint():
+    """Pick the live chat endpoint: the primary (AI3) when reachable, else the
+    fallback (AI2). Cached briefly so status polls don't hammer the hosts.
+    Returns (url, model, is_primary) or None when both are down."""
+    if time.time() - _EP_CACHE["at"] < 60:
+        return _EP_CACHE["ep"]
+    if _llm_reachable(LLM_URL):
+        ep = (LLM_URL, LLM_MODEL, True)
+    elif LLM_FALLBACK_URL and _llm_reachable(LLM_FALLBACK_URL):
+        ep = (LLM_FALLBACK_URL, LLM_FALLBACK_MODEL, False)
+    else:
+        ep = None
+    _EP_CACHE.update(at=time.time(), ep=ep)
+    return ep
+
+
 def _backend_status(backend: str) -> dict:
     out = {"id": backend, "ready": False, "detail": "",
            "label": {"qwen": f"Local AI ({LLM_MODEL})",
                      "claude": "Claude Code",
                      "codex": "Codex"}.get(backend, backend)}
     if backend == "qwen":
-        try:
-            req = urllib.request.Request(LLM_URL.replace("/chat/completions", "/models"))
-            urllib.request.urlopen(req, timeout=4).read()
+        ep = _llm_endpoint()
+        if ep:
             out["ready"] = True
-        except Exception as e:
-            out["detail"] = f"LLM endpoint unreachable: {e}"
+            out["label"] = f"Local AI ({ep[1]})"
+            if not ep[2]:
+                out["detail"] = "primary AI (AI3) is offline — using the backup AI (AI2)"
+        else:
+            out["detail"] = "LLM endpoints unreachable (primary and fallback)"
     elif backend in ("claude", "codex"):
         if not shutil.which(backend):
             out["detail"] = f"'{backend}' CLI not found on PATH"
@@ -129,9 +167,16 @@ def busy() -> bool:
 
 def _chat(messages, max_tokens=10000, temperature=0.3, timeout=900,
           url="", model="") -> str:
+    if not url:
+        ep = _llm_endpoint()
+        if ep is None:
+            raise RuntimeError("no LLM endpoint reachable (primary AI3 and "
+                               "fallback AI2 are both down)")
+        url = ep[0]
+        model = model or ep[1]
     body = json.dumps({"model": model or LLM_MODEL, "messages": messages,
                        "max_tokens": max_tokens, "temperature": temperature}).encode()
-    req = urllib.request.Request(url or LLM_URL, data=body,
+    req = urllib.request.Request(url, data=body,
                                  headers={"content-type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = json.loads(r.read())
@@ -224,6 +269,9 @@ def _qwen_build(req: dict, wt: Path, log) -> None:
 
     files = [wt / n for n in EDITABLE if (wt / n).exists()]
     guide = _repo_guide(wt)
+    ep = _llm_endpoint()
+    if ep:
+        log(f"LLM endpoint: {ep[0]} ({ep[1]}{'' if ep[2] else ', fallback'})")
     log("planning: sending file outlines to the model…")
     plan_raw = _chat([
         {"role": "system", "content":
